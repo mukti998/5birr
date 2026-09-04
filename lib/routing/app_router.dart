@@ -4,7 +4,7 @@ import 'package:go_router/go_router.dart';
 import '../core/providers/auth_provider.dart';
 import '../features/splash/splash_screen.dart';
 import '../features/auth/login_screen.dart';
-import '../features/auth/signup_screen.dart';
+import '../features/auth/signup_screen.dart' show SignupScreen, SignupRole;
 import '../features/auth/role_selection_screen.dart';
 import '../features/auth/admin_login_screen.dart';
 import '../features/user/user_dashboard.dart';
@@ -22,23 +22,22 @@ final appRouterProvider = Provider<GoRouter>((ref) {
     redirect: (context, state) {
       final isLoading = authState.isLoading;
       final isAuthenticated = authState.isAuthenticated;
-      final isOnAuthRoute = state.matchedLocation == '/login' ||
-          state.matchedLocation == '/signup' ||
-          state.matchedLocation == '/role-select' ||
-          state.matchedLocation == '/admin-login' ||
-          state.matchedLocation == '/';
+  final isOnAuthRoute = state.matchedLocation == '/login' ||
+      state.matchedLocation == '/role-select' ||
+      state.matchedLocation == '/admin-login' ||
+      state.matchedLocation == '/';
 
       // Still loading — stay on splash
       if (isLoading) return null;
 
       // Not authenticated — allow auth routes, redirect others to login
       if (!isAuthenticated) {
-        if (isOnAuthRoute) return null;
+        if (isOnAuthRoute || state.matchedLocation.startsWith('/signup/')) return null;
         return '/login';
       }
 
       // Authenticated but on auth route — redirect to appropriate dashboard
-      if (isOnAuthRoute && state.matchedLocation != '/') {
+      if ((isOnAuthRoute || state.matchedLocation.startsWith('/signup/')) && state.matchedLocation != '/') {
         return _getDashboardPath(authState);
       }
 
@@ -68,12 +67,21 @@ final appRouterProvider = Provider<GoRouter>((ref) {
         builder: (context, state) => const LoginScreen(),
       ),
       GoRoute(
-        path: '/signup',
-        builder: (context, state) => const SignupScreen(),
-      ),
-      GoRoute(
         path: '/role-select',
         builder: (context, state) => const RoleSelectionScreen(),
+      ),
+      GoRoute(
+        path: '/signup/:role',
+        builder: (context, state) {
+          final roleParam = state.pathParameters['role']!;
+          final role = switch (roleParam) {
+            'user' => SignupRole.user,
+            'vehicle' => SignupRole.vehicleProvider,
+            'service' => SignupRole.serviceProvider,
+            _ => SignupRole.user,
+          };
+          return SignupScreen(role: role);
+        },
       ),
       GoRoute(
         path: '/admin-login',
