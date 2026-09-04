@@ -1,116 +1,189 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:go_router/go_router.dart';
+import 'package:supabase_flutter/supabase_flutter.dart';
 import '../../core/theme/app_theme.dart';
 import '../../core/providers/auth_provider.dart';
 
-class AdminDashboard extends ConsumerWidget {
+class AdminDashboard extends ConsumerStatefulWidget {
   const AdminDashboard({super.key});
+  @override
+  ConsumerState<AdminDashboard> createState() => _AdminDashboardState();
+}
+
+class _AdminDashboardState extends ConsumerState<AdminDashboard> {
+  int _pendingProviders = 0;
+  int _totalProviders = 0;
+  int _totalUsers = 0;
+  int _totalProducts = 0;
+  bool _loading = true;
 
   @override
-  Widget build(BuildContext context, WidgetRef ref) {
-    final auth = ref.watch(authProvider);
+  void initState() {
+    super.initState();
+    _load();
+  }
 
+  Future<void> _load() async {
+    try {
+      final client = Supabase.instance.client;
+      final pending = await client
+          .from('provider_profiles')
+          .select('id', const FetchOptions(count: CountOption.exact))
+          .eq('status', 'PENDING_APPROVAL');
+      final total = await client
+          .from('provider_profiles')
+          .select('id', const FetchOptions(count: CountOption.exact));
+      final users = await client
+          .from('profiles')
+          .select('id', const FetchOptions(count: CountOption.exact));
+      final prods = await client
+          .from('products')
+          .select('id', const FetchOptions(count: CountOption.exact));
+      if (mounted) {
+        setState(() {
+          _pendingProviders = pending.count ?? 0;
+          _totalProviders = total.count ?? 0;
+          _totalUsers = users.count ?? 0;
+          _totalProducts = prods.count ?? 0;
+          _loading = false;
+        });
+      }
+    } catch (e) {
+      if (mounted) setState(() => _loading = false);
+    }
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final auth = ref.watch(authProvider);
     return Scaffold(
       appBar: AppBar(
         title: const Text('5BIRR Admin'),
         backgroundColor: AppTheme.primaryGreenDark,
         actions: [
           IconButton(
-            icon: const Icon(Icons.logout),
-            onPressed: () => ref.read(authProvider.notifier).signOut(),
-          ),
+              icon: const Icon(Icons.logout),
+              onPressed: () =>
+                  ref.read(authProvider.notifier).signOut()),
         ],
       ),
-      body: SingleChildScrollView(
-        padding: const EdgeInsets.all(20),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Container(
-              width: double.infinity,
-              padding: const EdgeInsets.all(20),
-              decoration: BoxDecoration(
-                gradient: const LinearGradient(
-                  colors: [AppTheme.primaryGreenDark, Color(0xFF071F0A)],
+      body: _loading
+          ? const Center(
+              child: CircularProgressIndicator(color: AppTheme.primaryGreen))
+          : RefreshIndicator(
+              onRefresh: _load,
+              child: SingleChildScrollView(
+                padding: const EdgeInsets.all(20),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Container(
+                      width: double.infinity,
+                      padding: const EdgeInsets.all(20),
+                      decoration: BoxDecoration(
+                        gradient: const LinearGradient(
+                            colors: [
+                              AppTheme.primaryGreenDark,
+                              Color(0xFF071F0A)
+                            ]),
+                        borderRadius: BorderRadius.circular(16),
+                      ),
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          const Text('Admin Panel',
+                              style: TextStyle(
+                                  fontSize: 20,
+                                  fontWeight: FontWeight.w700,
+                                  color: Colors.white)),
+                          const SizedBox(height: 4),
+                          Text('Manage the 5BIRR platform',
+                              style: TextStyle(
+                                  fontSize: 13,
+                                  color: Colors.white.withOpacity(0.7))),
+                        ],
+                      ),
+                    ),
+                    const SizedBox(height: 20),
+                    // Stats grid
+                    GridView.count(
+                      crossAxisCount: 2,
+                      shrinkWrap: true,
+                      physics: const NeverScrollableScrollPhysics(),
+                      mainAxisSpacing: 12,
+                      crossAxisSpacing: 12,
+                      childAspectRatio: 1.6,
+                      children: [
+                        _statCard(Icons.pending_actions, 'Pending',
+                            '$_pendingProviders', AppTheme.warning),
+                        _statCard(Icons.storefront, 'Providers',
+                            '$_totalProviders', AppTheme.primaryGreen),
+                        _statCard(
+                            Icons.people, 'Users', '$_totalUsers', AppTheme.teal),
+                        _statCard(Icons.inventory_2_outlined, 'Products',
+                            '$_totalProducts', AppTheme.info),
+                      ],
+                    ),
+                    const SizedBox(height: 24),
+                    const Text('Management',
+                        style: TextStyle(
+                            fontSize: 16, fontWeight: FontWeight.w700)),
+                    const SizedBox(height: 12),
+                    _action(Icons.approval, 'Pending Approvals',
+                        () => context.go('/admin/approvals')),
+                    _action(Icons.storefront_outlined, 'Service Providers',
+                        () => context.go('/admin/providers')),
+                    _action(Icons.directions_car_outlined,
+                        'Vehicle Providers', () => context.go('/admin/providers')),
+                    _action(Icons.people_outline, 'Users', null),
+                    _action(Icons.category_outlined, 'Categories', null),
+                    _action(Icons.analytics_outlined, 'Analytics', null),
+                  ],
                 ),
-                borderRadius: BorderRadius.circular(16),
-              ),
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  const Text('Admin Panel',
-                      style: TextStyle(
-                          fontSize: 20,
-                          fontWeight: FontWeight.w700,
-                          color: Colors.white)),
-                  const SizedBox(height: 4),
-                  Text(
-                    'Manage the 5BIRR platform',
-                    style: TextStyle(
-                        fontSize: 13, color: Colors.white.withOpacity(0.7)),
-                  ),
-                ],
               ),
             ),
-            const SizedBox(height: 24),
-            const Text('Management',
-                style: TextStyle(
-                    fontSize: 16,
-                    fontWeight: FontWeight.w600,
-                    color: AppTheme.textPrimary)),
-            const SizedBox(height: 12),
-            _adminCard(Icons.approval, 'Approvals', 'Review pending applications'),
-            _adminCard(Icons.people_outline, 'Users', 'Manage user accounts'),
-            _adminCard(Icons.storefront_outlined, 'Providers', 'Manage providers'),
-            _adminCard(Icons.category_outlined, 'Categories', 'Manage categories'),
-            _adminCard(Icons.analytics_outlined, 'Analytics', 'Platform analytics'),
-          ],
-        ),
-      ),
     );
   }
 
-  Widget _adminCard(IconData icon, String title, String subtitle) {
+  Widget _statCard(
+      IconData icon, String label, String value, Color color) {
     return Container(
-      width: double.infinity,
-      margin: const EdgeInsets.only(bottom: 8),
-      padding: const EdgeInsets.all(16),
+      padding: const EdgeInsets.all(14),
       decoration: BoxDecoration(
         color: AppTheme.surface,
         borderRadius: BorderRadius.circular(12),
         border: Border.all(color: AppTheme.cardBorder),
       ),
-      child: Row(
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Container(
-            width: 40,
-            height: 40,
-            decoration: BoxDecoration(
-              color: AppTheme.primaryGreenDark.withOpacity(0.08),
-              borderRadius: BorderRadius.circular(10),
-            ),
-            child: Icon(icon, color: AppTheme.primaryGreenDark, size: 20),
-          ),
-          const SizedBox(width: 12),
-          Expanded(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Text(title,
-                    style: const TextStyle(
-                        fontSize: 14,
-                        fontWeight: FontWeight.w600,
-                        color: AppTheme.textPrimary)),
-                const SizedBox(height: 2),
-                Text(subtitle,
-                    style: const TextStyle(
-                        fontSize: 12, color: AppTheme.textMuted)),
-              ],
-            ),
-          ),
-          const Icon(Icons.arrow_forward_ios,
-              size: 14, color: AppTheme.textMuted),
+          Icon(icon, color: color, size: 20),
+          const Spacer(),
+          Text(value,
+              style: const TextStyle(
+                  fontSize: 20, fontWeight: FontWeight.w700)),
+          Text(label,
+              style:
+                  const TextStyle(fontSize: 11, color: AppTheme.textMuted)),
         ],
+      ),
+    );
+  }
+
+  Widget _action(IconData icon, String label, VoidCallback? onTap) {
+    return Container(
+      margin: const EdgeInsets.only(bottom: 8),
+      child: ListTile(
+        onTap: onTap,
+        leading: Icon(icon, color: AppTheme.primaryGreenDark),
+        title: Text(label,
+            style: const TextStyle(
+                fontSize: 15, fontWeight: FontWeight.w500)),
+        trailing: const Icon(Icons.chevron_right,
+            color: AppTheme.textMuted, size: 20),
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+        tileColor: AppTheme.surface,
       ),
     );
   }

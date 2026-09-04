@@ -8,9 +8,19 @@ import '../features/auth/signup_screen.dart' show SignupScreen, SignupRole;
 import '../features/auth/role_selection_screen.dart';
 import '../features/auth/admin_login_screen.dart';
 import '../features/user/user_dashboard.dart';
+import '../features/user/user_product_detail_screen.dart';
+import '../features/user/user_provider_detail_screen.dart';
+import '../features/user/user_category_screen.dart';
+import '../features/user/user_favorites_screen.dart';
 import '../features/provider/service_provider_dashboard.dart';
+import '../features/provider/provider_business_profile_screen.dart';
+import '../features/provider/provider_product_list_screen.dart';
+import '../features/provider/provider_product_form_screen.dart';
 import '../features/vehicle/vehicle_provider_dashboard.dart';
+import '../features/vehicle/vehicle_management_screen.dart';
+import '../features/vehicle/vehicle_form_screen.dart';
 import '../features/admin/admin_dashboard.dart';
+import '../features/admin/admin_provider_management_screen.dart';
 import '../features/approval/pending_approval_screen.dart';
 import '../features/approval/rejected_screen.dart';
 
@@ -22,95 +32,81 @@ final appRouterProvider = Provider<GoRouter>((ref) {
     redirect: (context, state) {
       final isLoading = authState.isLoading;
       final isAuthenticated = authState.isAuthenticated;
-  final isOnAuthRoute = state.matchedLocation == '/login' ||
-      state.matchedLocation == '/role-select' ||
-      state.matchedLocation == '/admin-login' ||
-      state.matchedLocation == '/';
+      final loc = state.matchedLocation;
+      final isAuthRoute = loc == '/login' ||
+          loc == '/role-select' ||
+          loc == '/admin-login' ||
+          loc == '/';
 
-      // Still loading — stay on splash
       if (isLoading) return null;
 
-      // Not authenticated — allow auth routes, redirect others to login
       if (!isAuthenticated) {
-        if (isOnAuthRoute || state.matchedLocation.startsWith('/signup/')) return null;
+        if (isAuthRoute || loc.startsWith('/signup/')) return null;
         return '/login';
       }
 
-      // Authenticated but on auth route — redirect to appropriate dashboard
-      if ((isOnAuthRoute || state.matchedLocation.startsWith('/signup/')) && state.matchedLocation != '/') {
+      if ((isAuthRoute || loc.startsWith('/signup/')) && loc != '/') {
         return _getDashboardPath(authState);
       }
 
-      // Authenticated but profile not loaded yet
       if (authState.profile == null && isAuthenticated) {
         return '/role-select';
       }
 
-      // Check pending approval states
-      if (authState.isPendingApproval && !_isApprovalRoute(state.matchedLocation)) {
+      if (authState.isPendingApproval && !_isApprovalRoute(loc)) {
         return '/pending-approval';
       }
-
-      if (authState.isRejected && !_isApprovalRoute(state.matchedLocation)) {
+      if (authState.isRejected && !_isApprovalRoute(loc)) {
         return '/rejected';
       }
 
       return null;
     },
     routes: [
-      GoRoute(
-        path: '/',
-        builder: (context, state) => const SplashScreen(),
-      ),
-      GoRoute(
-        path: '/login',
-        builder: (context, state) => const LoginScreen(),
-      ),
-      GoRoute(
-        path: '/role-select',
-        builder: (context, state) => const RoleSelectionScreen(),
-      ),
+      GoRoute(path: '/', builder: (_, __) => const SplashScreen()),
+      GoRoute(path: '/login', builder: (_, __) => const LoginScreen()),
+      GoRoute(path: '/role-select', builder: (_, __) => const RoleSelectionScreen()),
       GoRoute(
         path: '/signup/:role',
-        builder: (context, state) {
-          final roleParam = state.pathParameters['role']!;
-          final role = switch (roleParam) {
+        builder: (_, state) {
+          final r = state.pathParameters['role']!;
+          return SignupScreen(role: switch (r) {
             'user' => SignupRole.user,
             'vehicle' => SignupRole.vehicleProvider,
             'service' => SignupRole.serviceProvider,
             _ => SignupRole.user,
-          };
-          return SignupScreen(role: role);
+          });
         },
       ),
-      GoRoute(
-        path: '/admin-login',
-        builder: (context, state) => const AdminLoginScreen(),
-      ),
-      GoRoute(
-        path: '/pending-approval',
-        builder: (context, state) => const PendingApprovalScreen(),
-      ),
-      GoRoute(
-        path: '/rejected',
-        builder: (context, state) => const RejectedScreen(),
-      ),
-      GoRoute(
-        path: '/user',
-        builder: (context, state) => const UserDashboard(),
-      ),
-      GoRoute(
-        path: '/provider',
-        builder: (context, state) => const ServiceProviderDashboard(),
-      ),
-      GoRoute(
-        path: '/vehicle',
-        builder: (context, state) => const VehicleProviderDashboard(),
-      ),
-      GoRoute(
-        path: '/admin',
-        builder: (context, state) => const AdminDashboard(),
-      ),
+      GoRoute(path: '/admin-login', builder: (_, __) => const AdminLoginScreen()),
+      GoRoute(path: '/pending-approval', builder: (_, __) => const PendingApprovalScreen()),
+      GoRoute(path: '/rejected', builder: (_, __) => const RejectedScreen()),
+
+      // ── User ──
+      GoRoute(path: '/user', builder: (_, __) => const UserDashboard()),
+      GoRoute(path: '/user/product/:id', builder: (_, s) => UserProductDetailScreen(productId: s.pathParameters['id']!)),
+      GoRoute(path: '/user/provider/:id', builder: (_, s) => UserProviderDetailScreen(providerId: s.pathParameters['id']!)),
+      GoRoute(path: '/user/category/:id', builder: (_, s) => UserCategoryScreen(categoryId: s.pathParameters['id']!)),
+      GoRoute(path: '/user/favorites', builder: (_, __) => const UserFavoritesScreen()),
+      GoRoute(path: '/user/search', builder: (_, __) => const UserDashboard()),
+
+      // ── Service Provider ──
+      GoRoute(path: '/provider', builder: (_, __) => const ServiceProviderDashboard()),
+      GoRoute(path: '/provider/business', builder: (_, __) => const ProviderBusinessProfileScreen()),
+      GoRoute(path: '/provider/products', builder: (_, __) => const ProviderProductListScreen()),
+      GoRoute(path: '/provider/products/new', builder: (_, __) => const ProviderProductFormScreen()),
+      GoRoute(path: '/provider/products/:id', builder: (_, s) => ProviderProductFormScreen(productId: s.pathParameters['id'])),
+
+      // ── Vehicle Provider ──
+      GoRoute(path: '/vehicle', builder: (_, __) => const VehicleProviderDashboard()),
+      GoRoute(path: '/vehicle/vehicles', builder: (_, __) => const VehicleManagementScreen()),
+      GoRoute(path: '/vehicle/vehicles/new', builder: (_, __) => const VehicleFormScreen()),
+      GoRoute(path: '/vehicle/vehicles/:id', builder: (_, s) => VehicleFormScreen(vehicleId: s.pathParameters['id'])),
+
+      // ── Admin ──
+      GoRoute(path: '/admin', builder: (_, __) => const AdminDashboard()),
+      GoRoute(path: '/admin/approvals', builder: (_, __) => const AdminProviderManagementScreen()),
+      GoRoute(path: '/admin/providers', builder: (_, __) => const AdminProviderManagementScreen()),
     ],
   );
 });
