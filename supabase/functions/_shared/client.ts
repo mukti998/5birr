@@ -36,6 +36,10 @@ export async function requireUser(req: Request) {
   return { user: data.user, userClient };
 }
 
+/**
+ * Verify the authenticated user holds a specific role using the admin client.
+ * This reads from user_roles (server-populated) — never trusts client claims.
+ */
 export async function requireRole(req: Request, role: string) {
   const { user, userClient } = await requireUser(req);
   const admin = getAdminClient();
@@ -50,4 +54,30 @@ export function json(body: unknown, status = 200) {
     status,
     headers: { ...corsHeaders, "Content-Type": "application/json" },
   });
+}
+
+/**
+ * Sanitize error messages to prevent leaking internal implementation details.
+ * Only returns safe, user-facing error codes, not raw SQL/DB errors.
+ */
+export function sanitizeError(msg: string): string {
+  // Known safe error codes to pass through
+  const safeCodes = [
+    "RIDE_ALREADY_TAKEN", "VEHICLE_NOT_ELIGIBLE", "PROVIDER_NOT_ELIGIBLE",
+    "WALLET_NOT_FOUND", "INSUFFICIENT_WALLET_BALANCE", "ORDER_NOT_FOUND",
+    "RIDE_NOT_FOUND", "RECHARGE_REQUEST_NOT_FOUND", "RECHARGE_REQUEST_IS_NOT_PENDING",
+    "PROVIDER_NOT_FOUND", "PROVIDER_MISMATCH", "FORBIDDEN", "UNAUTHORIZED",
+    "INVALID_TRANSITION", "PAYMENT_PROOF_REQUIRED", "LOCATION_REQUIRED_TO_GO_ONLINE",
+    "NOT_YOUR_DRIVER_STATUS", "CANNOT_CREATE_RIDE_FOR_ANOTHER_USER",
+    "AMOUNT_MUST_BE_POSITIVE", "AMOUNT_CANNOT_BE_ZERO",
+    "WALLET_NOT_FOUND_FOR_PROVIDER", "INSUFFICIENT_BALANCE_FOR_DEBIT",
+    "ONLY_ADMINISTRATORS", "ADMINISTRATORS_CANNOT", "ROLE_REQUIRED",
+    "ONLY_CLAIMING_PROVIDER", "ONLY_RIDER_OR_ADMIN", "RIDE_ALREADY_TERMINAL",
+    "RECHARGE_STATUS_CAN_ONLY", "SUBSCRIPTION_STATUS_CANNOT_BE_SELF_MODIFIED",
+  ];
+  for (const code of safeCodes) {
+    if (msg.includes(code)) return msg;
+  }
+  // Unknown error: return generic message
+  return "An internal error occurred. Please try again.";
 }

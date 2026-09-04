@@ -1,7 +1,7 @@
 // POST /admin-wallet-recharge
 // Body: { action: 'approve'|'reject', recharge_id, reason? }
 // Admin-only endpoint for approving/rejecting wallet recharge requests.
-import { corsHeaders, requireRole, getAdminClient, json } from "../_shared/client.ts";
+import { corsHeaders, requireRole, getAdminClient, json, sanitizeError } from "../_shared/client.ts";
 
 Deno.serve(async (req) => {
   if (req.method === "OPTIONS") return new Response("ok", { headers: corsHeaders });
@@ -32,10 +32,10 @@ Deno.serve(async (req) => {
       return json({ error: "Unsupported action" }, 400);
     }
 
-    if (error) return json({ error: error.message }, 400);
+    if (error) return json({ error: sanitizeError(error.message) }, 400);
     return json({ recharge: data });
   } catch (e) {
     if (e instanceof Response) return e;
-    return json({ error: String(e) }, 500);
+    return json({ error: "An internal error occurred" }, 500);
   }
 });

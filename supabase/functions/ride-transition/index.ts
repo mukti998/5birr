@@ -1,7 +1,7 @@
 // POST /ride-transition
 // Body: { ride_id, new_status, actor_id }
 // Validates caller authorization for ride status transitions.
-import { corsHeaders, requireUser, getAdminClient, json } from "../_shared/client.ts";
+import { corsHeaders, requireUser, getAdminClient, json, sanitizeError } from "../_shared/client.ts";
 
 Deno.serve(async (req) => {
   if (req.method === "OPTIONS") return new Response("ok", { headers: corsHeaders });
@@ -79,10 +79,10 @@ Deno.serve(async (req) => {
       p_actor: user.id,
     });
 
-    if (error) return json({ error: error.message }, 400);
+    if (error) return json({ error: sanitizeError(error.message) }, 400);
     return json({ ride: data });
   } catch (e) {
     if (e instanceof Response) return e;
-    return json({ error: String(e) }, 500);
+    return json({ error: "An internal error occurred" }, 500);
   }
 });

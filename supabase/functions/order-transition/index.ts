@@ -3,7 +3,7 @@
 // Validates caller is either the order's user, the owning provider, or admin,
 // then delegates to transition_order_status() which enforces the whitelist
 // of legal transitions and the payment-proof requirement server-side.
-import { corsHeaders, requireUser, getAdminClient, json } from "../_shared/client.ts";
+import { corsHeaders, requireUser, getAdminClient, json, sanitizeError } from "../_shared/client.ts";
 
 Deno.serve(async (req) => {
   if (req.method === "OPTIONS") return new Response("ok", { headers: corsHeaders });
@@ -40,10 +40,10 @@ Deno.serve(async (req) => {
       p_note: note ?? null,
     });
 
-    if (error) return json({ error: error.message }, 400);
+    if (error) return json({ error: sanitizeError(error.message) }, 400);
     return json({ order: data });
   } catch (e) {
     if (e instanceof Response) return e;
-    return json({ error: String(e) }, 500);
+    return json({ error: "An internal error occurred" }, 500);
   }
 });

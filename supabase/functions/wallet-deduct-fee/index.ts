@@ -4,7 +4,7 @@
 // flow the fee is deducted automatically inside transition_order_status()
 // and transition_ride_status() — this endpoint exists for admin corrections,
 // n8n-triggered retries, and out-of-band charges. Idempotent by design.
-import { corsHeaders, requireRole, getAdminClient, json } from "../_shared/client.ts";
+import { corsHeaders, requireRole, getAdminClient, json, sanitizeError } from "../_shared/client.ts";
 
 Deno.serve(async (req) => {
   if (req.method === "OPTIONS") return new Response("ok", { headers: corsHeaders });
@@ -25,10 +25,10 @@ Deno.serve(async (req) => {
       p_idempotency_key: idempotency_key,
     });
 
-    if (error) return json({ error: error.message }, 400);
+    if (error) return json({ error: sanitizeError(error.message) }, 400);
     return json({ transaction: data });
   } catch (e) {
     if (e instanceof Response) return e;
-    return json({ error: String(e) }, 500);
+    return json({ error: "An internal error occurred" }, 500);
   }
 });

@@ -3,7 +3,7 @@
 // Wraps claim_ride() SECURITY DEFINER SQL function. Only ONE concurrent
 // caller can succeed for a given ride_id — enforced at the DB layer via
 // a conditional UPDATE ... WHERE status = 'REQUESTED', not here.
-import { corsHeaders, requireRole, getAdminClient, json } from "../_shared/client.ts";
+import { corsHeaders, requireRole, getAdminClient, json, sanitizeError } from "../_shared/client.ts";
 
 Deno.serve(async (req) => {
   if (req.method === "OPTIONS") return new Response("ok", { headers: corsHeaders });
@@ -34,13 +34,14 @@ Deno.serve(async (req) => {
     });
 
     if (error) {
-      const code = error.message.includes("RIDE_ALREADY_TAKEN") ? 409 : 400;
-      return json({ error: error.message }, code);
+      const msg = sanitizeError(error.message);
+      const code = msg.includes("RIDE_ALREADY_TAKEN") ? 409 : 400;
+      return json({ error: msg }, code);
     }
 
     return json({ ride: data });
   } catch (e) {
     if (e instanceof Response) return e;
-    return json({ error: String(e) }, 500);
+    return json({ error: "An internal error occurred" }, 500);
   }
 });
