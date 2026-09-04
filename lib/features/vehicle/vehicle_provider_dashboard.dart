@@ -138,8 +138,8 @@ class _VehicleProviderDashboardState
                         () => context.go('/vehicle/vehicles/new')),
                     _action(Icons.local_taxi_outlined, 'Ride Requests', null),
                     _action(Icons.history, 'Ride History', null),
-                    _action(
-                        Icons.account_balance_wallet_outlined, 'Wallet', null),
+                    _action(Icons.account_balance_wallet_outlined, 'Wallet',
+                        () => context.go('/wallet')),
                     _action(Icons.person_outline, 'Profile', null),
                   ],
                 ),

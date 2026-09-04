@@ -13,6 +13,7 @@ class AdminDashboard extends ConsumerStatefulWidget {
 
 class _AdminDashboardState extends ConsumerState<AdminDashboard> {
   int _pendingProviders = 0;
+  int _pendingRecharges = 0;
   int _totalProviders = 0;
   int _totalUsers = 0;
   int _totalProducts = 0;
@@ -31,6 +32,10 @@ class _AdminDashboardState extends ConsumerState<AdminDashboard> {
           .from('provider_profiles')
           .select('id', const FetchOptions(count: CountOption.exact))
           .eq('status', 'PENDING_APPROVAL');
+      final recharges = await client
+          .from('wallet_recharge_requests')
+          .select('id', const FetchOptions(count: CountOption.exact))
+          .eq('status', 'PENDING');
       final total = await client
           .from('provider_profiles')
           .select('id', const FetchOptions(count: CountOption.exact));
@@ -43,6 +48,7 @@ class _AdminDashboardState extends ConsumerState<AdminDashboard> {
       if (mounted) {
         setState(() {
           _pendingProviders = pending.count ?? 0;
+          _pendingRecharges = recharges.count ?? 0;
           _totalProviders = total.count ?? 0;
           _totalUsers = users.count ?? 0;
           _totalProducts = prods.count ?? 0;
@@ -64,8 +70,7 @@ class _AdminDashboardState extends ConsumerState<AdminDashboard> {
         actions: [
           IconButton(
               icon: const Icon(Icons.logout),
-              onPressed: () =>
-                  ref.read(authProvider.notifier).signOut()),
+              onPressed: () => ref.read(authProvider.notifier).signOut()),
         ],
       ),
       body: _loading
@@ -83,10 +88,7 @@ class _AdminDashboardState extends ConsumerState<AdminDashboard> {
                       padding: const EdgeInsets.all(20),
                       decoration: BoxDecoration(
                         gradient: const LinearGradient(
-                            colors: [
-                              AppTheme.primaryGreenDark,
-                              Color(0xFF071F0A)
-                            ]),
+                            colors: [AppTheme.primaryGreenDark, Color(0xFF071F0A)]),
                         borderRadius: BorderRadius.circular(16),
                       ),
                       child: Column(
@@ -106,7 +108,6 @@ class _AdminDashboardState extends ConsumerState<AdminDashboard> {
                       ),
                     ),
                     const SizedBox(height: 20),
-                    // Stats grid
                     GridView.count(
                       crossAxisCount: 2,
                       shrinkWrap: true,
@@ -115,27 +116,41 @@ class _AdminDashboardState extends ConsumerState<AdminDashboard> {
                       crossAxisSpacing: 12,
                       childAspectRatio: 1.6,
                       children: [
-                        _statCard(Icons.pending_actions, 'Pending',
+                        _statCard(Icons.pending_actions, 'Pending Providers',
                             '$_pendingProviders', AppTheme.warning),
+                        _statCard(Icons.payment, 'Pending Recharges',
+                            '$_pendingRecharges', AppTheme.teal),
                         _statCard(Icons.storefront, 'Providers',
                             '$_totalProviders', AppTheme.primaryGreen),
-                        _statCard(
-                            Icons.people, 'Users', '$_totalUsers', AppTheme.teal),
-                        _statCard(Icons.inventory_2_outlined, 'Products',
-                            '$_totalProducts', AppTheme.info),
+                        _statCard(Icons.people, 'Users', '$_totalUsers', AppTheme.info),
                       ],
                     ),
                     const SizedBox(height: 24),
-                    const Text('Management',
-                        style: TextStyle(
-                            fontSize: 16, fontWeight: FontWeight.w700)),
+                    // Provider Management
+                    const Text('Provider Management',
+                        style: TextStyle(fontSize: 16, fontWeight: FontWeight.w700)),
                     const SizedBox(height: 12),
                     _action(Icons.approval, 'Pending Approvals',
                         () => context.go('/admin/approvals')),
-                    _action(Icons.storefront_outlined, 'Service Providers',
+                    _action(Icons.storefront_outlined, 'All Providers',
                         () => context.go('/admin/providers')),
-                    _action(Icons.directions_car_outlined,
-                        'Vehicle Providers', () => context.go('/admin/providers')),
+                    _action(Icons.directions_car_outlined, 'Vehicle Providers',
+                        () => context.go('/admin/providers')),
+                    const SizedBox(height: 20),
+                    // Financial
+                    const Text('Financial',
+                        style: TextStyle(fontSize: 16, fontWeight: FontWeight.w700)),
+                    const SizedBox(height: 12),
+                    _action(Icons.payment, 'Payment Verification',
+                        () => context.go('/admin/payments')),
+                    _action(Icons.money, 'Cash Recharge', null),
+                    _action(Icons.account_balance_wallet_outlined, 'Payment Methods',
+                        () => context.go('/admin/payment-methods')),
+                    const SizedBox(height: 20),
+                    // System
+                    const Text('System',
+                        style: TextStyle(fontSize: 16, fontWeight: FontWeight.w700)),
+                    const SizedBox(height: 12),
                     _action(Icons.people_outline, 'Users', null),
                     _action(Icons.category_outlined, 'Categories', null),
                     _action(Icons.analytics_outlined, 'Analytics', null),
@@ -146,8 +161,7 @@ class _AdminDashboardState extends ConsumerState<AdminDashboard> {
     );
   }
 
-  Widget _statCard(
-      IconData icon, String label, String value, Color color) {
+  Widget _statCard(IconData icon, String label, String value, Color color) {
     return Container(
       padding: const EdgeInsets.all(14),
       decoration: BoxDecoration(
@@ -161,11 +175,9 @@ class _AdminDashboardState extends ConsumerState<AdminDashboard> {
           Icon(icon, color: color, size: 20),
           const Spacer(),
           Text(value,
-              style: const TextStyle(
-                  fontSize: 20, fontWeight: FontWeight.w700)),
+              style: const TextStyle(fontSize: 20, fontWeight: FontWeight.w700)),
           Text(label,
-              style:
-                  const TextStyle(fontSize: 11, color: AppTheme.textMuted)),
+              style: const TextStyle(fontSize: 11, color: AppTheme.textMuted)),
         ],
       ),
     );
@@ -178,10 +190,8 @@ class _AdminDashboardState extends ConsumerState<AdminDashboard> {
         onTap: onTap,
         leading: Icon(icon, color: AppTheme.primaryGreenDark),
         title: Text(label,
-            style: const TextStyle(
-                fontSize: 15, fontWeight: FontWeight.w500)),
-        trailing: const Icon(Icons.chevron_right,
-            color: AppTheme.textMuted, size: 20),
+            style: const TextStyle(fontSize: 15, fontWeight: FontWeight.w500)),
+        trailing: const Icon(Icons.chevron_right, color: AppTheme.textMuted, size: 20),
         shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
         tileColor: AppTheme.surface,
       ),

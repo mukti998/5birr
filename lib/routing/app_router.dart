@@ -19,8 +19,14 @@ import '../features/provider/provider_product_form_screen.dart';
 import '../features/vehicle/vehicle_provider_dashboard.dart';
 import '../features/vehicle/vehicle_management_screen.dart';
 import '../features/vehicle/vehicle_form_screen.dart';
+import '../features/wallet/wallet_screen.dart';
+import '../features/wallet/recharge_screen.dart';
 import '../features/admin/admin_dashboard.dart';
 import '../features/admin/admin_provider_management_screen.dart';
+import '../features/admin/admin_payment_methods_screen.dart';
+import '../features/admin/admin_payment_verification_screen.dart';
+import '../features/admin/admin_cash_recharge_screen.dart';
+import '../features/admin/admin_provider_wallet_screen.dart';
 import '../features/approval/pending_approval_screen.dart';
 import '../features/approval/rejected_screen.dart';
 
@@ -97,6 +103,10 @@ final appRouterProvider = Provider<GoRouter>((ref) {
       GoRoute(path: '/provider/products/new', builder: (_, __) => const ProviderProductFormScreen()),
       GoRoute(path: '/provider/products/:id', builder: (_, s) => ProviderProductFormScreen(productId: s.pathParameters['id'])),
 
+      // ── Wallet (provider) ──
+      GoRoute(path: '/wallet', builder: (_, __) => const WalletScreen()),
+      GoRoute(path: '/wallet/recharge', builder: (_, __) => const RechargeScreen()),
+
       // ── Vehicle Provider ──
       GoRoute(path: '/vehicle', builder: (_, __) => const VehicleProviderDashboard()),
       GoRoute(path: '/vehicle/vehicles', builder: (_, __) => const VehicleManagementScreen()),
@@ -107,6 +117,10 @@ final appRouterProvider = Provider<GoRouter>((ref) {
       GoRoute(path: '/admin', builder: (_, __) => const AdminDashboard()),
       GoRoute(path: '/admin/approvals', builder: (_, __) => const AdminProviderManagementScreen()),
       GoRoute(path: '/admin/providers', builder: (_, __) => const AdminProviderManagementScreen()),
+      GoRoute(path: '/admin/payment-methods', builder: (_, __) => const AdminPaymentMethodsScreen()),
+      GoRoute(path: '/admin/payments', builder: (_, __) => const AdminPaymentVerificationScreen()),
+      GoRoute(path: '/admin/providers/:id/wallet', builder: (_, s) => AdminProviderWalletScreen(providerId: s.pathParameters['id']!)),
+      GoRoute(path: '/admin/providers/:id/wallet/recharge', builder: (_, s) => AdminCashRechargeScreen(providerId: s.pathParameters['id']!)),
     ],
   );
 });

@@ -157,9 +157,8 @@ class _ServiceProviderDashboardState
                     _action(Icons.add_circle_outline, 'Add Product',
                         () => context.go('/provider/products/new')),
                     _action(Icons.photo_library_outlined, 'Gallery', null),
-                    _action(Icons.receipt_long_outlined, 'Orders', null),
-                    _action(
-                        Icons.account_balance_wallet_outlined, 'Wallet', null),
+                    _action(Icons.receipt_long_outlined, 'Orders', null),                    _action(Icons.account_balance_wallet_outlined, 'Wallet',
+                        () => context.go('/wallet')),
                     _action(Icons.card_membership, 'Subscription', null),
                     _action(Icons.person_outline, 'Profile', null),
                   ],
