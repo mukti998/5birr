@@ -1,9 +1,12 @@
+import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
+import 'package:geolocator/geolocator.dart';
 import '../../core/theme/app_theme.dart';
 import '../../core/providers/auth_provider.dart';
+import '../../core/services/location_service.dart';
 
 class VehicleProviderDashboard extends ConsumerStatefulWidget {
   const VehicleProviderDashboard({super.key});
@@ -15,8 +18,11 @@ class VehicleProviderDashboard extends ConsumerStatefulWidget {
 class _VehicleProviderDashboardState
     extends ConsumerState<VehicleProviderDashboard> {
   Map<String, dynamic>? _providerProfile;
+  Map<String, dynamic>? _driverStatus;
   int _vehicleCount = 0;
   bool _loading = true;
+  bool _togglingOnline = false;
+  StreamSubscription? _posSub;
 
   @override
   void initState() {
@@ -43,10 +49,16 @@ class _VehicleProviderDashboardState
           .from('vehicles')
           .select('id', const FetchOptions(count: CountOption.exact))
           .eq('provider_id', prov['id']);
+      final status = await client
+          .from('driver_status')
+          .select()
+          .eq('provider_id', prov['id'])
+          .maybeSingle();
       if (mounted) {
         setState(() {
           _providerProfile = prov;
           _vehicleCount = vehicles.count ?? 0;
+          _driverStatus = status;
           _loading = false;
         });
       }
@@ -54,6 +66,62 @@ class _VehicleProviderDashboardState
       if (mounted) setState(() => _loading = false);
     }
   }
+
+  Future<void> _toggleOnline() async {
+    if (_providerProfile == null) return;
+    setState(() => _togglingOnline = true);
+    try {
+      final isCurrentlyOnline = _driverStatus?['is_online'] ?? false;
+      if (!isCurrentlyOnline) {
+        // Going online - need location
+        final pos = await LocationService.instance.getCurrentPosition();
+        if (pos == null) {
+          if (mounted) {
+            ScaffoldMessenger.of(context).showSnackBar(
+                const SnackBar(content: Text('Location permission required to go online')));
+          }
+          setState(() => _togglingOnline = false);
+          return;
+        }
+        await LocationService.instance.setDriverOnline(
+            _providerProfile!['id'], true,
+            lat: pos.latitude, lng: pos.longitude);
+        // Start location updates
+        _startLocationUpdates(_providerProfile!['id']);
+      } else {
+        // Going offline
+        await LocationService.instance.setDriverOnline(
+            _providerProfile!['id'], false);
+        _posSub?.cancel();
+      }
+      _load();
+    } catch (e) {
+      if (mounted) {
+        ScaffoldMessenger.of(context)
+            .showSnackBar(SnackBar(content: Text('Error: $e')));
+      }
+    } finally {
+      if (mounted) setState(() => _togglingOnline = false);
+    }
+  }
+
+  void _startLocationUpdates(String providerId) {
+    _posSub?.cancel();
+    _posSub = LocationService.instance.getPositionStream(
+        distanceFilter: 100, interval: const Duration(seconds: 15))
+        .listen((pos) {
+      LocationService.instance.updateDriverLocation(
+          providerId, pos.latitude, pos.longitude);
+    });
+  }
+
+  @override
+  void dispose() {
+    _posSub?.cancel();
+    super.dispose();
+  }
+
+  bool get _isOnline => _driverStatus?['is_online'] ?? false;
 
   @override
   Widget build(BuildContext context) {
@@ -67,8 +135,7 @@ class _VehicleProviderDashboardState
               onPressed: () {}),
           IconButton(
               icon: const Icon(Icons.logout),
-              onPressed: () =>
-                  ref.read(authProvider.notifier).signOut()),
+              onPressed: () => ref.read(authProvider.notifier).signOut()),
         ],
       ),
       body: _loading
@@ -81,43 +148,86 @@ class _VehicleProviderDashboardState
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
+                    // Header with online toggle
                     Container(
                       width: double.infinity,
                       padding: const EdgeInsets.all(20),
                       decoration: BoxDecoration(
-                        gradient: const LinearGradient(
-                            colors: [AppTheme.teal, Color(0xFF00695C)]),
+                        gradient: LinearGradient(
+                            colors: _isOnline
+                                ? [AppTheme.teal, const Color(0xFF00695C)]
+                                : [AppTheme.textMuted, AppTheme.textSecondary]),
                         borderRadius: BorderRadius.circular(16),
                       ),
                       child: Column(
                         crossAxisAlignment: CrossAxisAlignment.start,
                         children: [
-                          Text(
-                              _providerProfile?['business_name'] ??
-                                  auth.profile?.fullName ??
-                                  'Provider',
-                              style: const TextStyle(
-                                  fontSize: 20,
-                                  fontWeight: FontWeight.w700,
-                                  color: Colors.white)),
-                          const SizedBox(height: 4),
-                          Container(
-                            padding: const EdgeInsets.symmetric(
-                                horizontal: 8, vertical: 3),
-                            decoration: BoxDecoration(
-                              color: Colors.white.withOpacity(0.2),
-                              borderRadius: BorderRadius.circular(12),
-                            ),
-                            child: Text(
-                                (_providerProfile?['status'] ?? 'UNKNOWN')
-                                    .replaceAll('_', ' '),
-                                style: const TextStyle(
-                                    fontSize: 11, color: Colors.white)),
+                          Row(
+                            children: [
+                              Expanded(
+                                child: Column(
+                                  crossAxisAlignment: CrossAxisAlignment.start,
+                                  children: [
+                                    Text(
+                                        _providerProfile?['business_name'] ??
+                                            auth.profile?.fullName ??
+                                            'Provider',
+                                        style: const TextStyle(
+                                            fontSize: 20,
+                                            fontWeight: FontWeight.w700,
+                                            color: Colors.white)),
+                                    const SizedBox(height: 4),
+                                    Container(
+                                      padding: const EdgeInsets.symmetric(
+                                          horizontal: 8, vertical: 3),
+                                      decoration: BoxDecoration(
+                                        color: Colors.white.withOpacity(0.2),
+                                        borderRadius:
+                                            BorderRadius.circular(12),
+                                      ),
+                                      child: Text(
+                                          (_providerProfile?['status'] ??
+                                                  'UNKNOWN')
+                                              .replaceAll('_', ' '),
+                                          style: const TextStyle(
+                                              fontSize: 11,
+                                              color: Colors.white)),
+                                    ),
+                                  ],
+                                ),
+                              ),
+                              // Online/offline toggle
+                              GestureDetector(
+                                onTap: _togglingOnline ? null : _toggleOnline,
+                                child: Container(
+                                  padding: const EdgeInsets.symmetric(
+                                      horizontal: 16, vertical: 10),
+                                  decoration: BoxDecoration(
+                                    color: Colors.white.withOpacity(0.2),
+                                    borderRadius: BorderRadius.circular(20),
+                                  ),
+                                  child: _togglingOnline
+                                      ? const SizedBox(
+                                          width: 16,
+                                          height: 16,
+                                          child: CircularProgressIndicator(
+                                              strokeWidth: 2,
+                                              color: Colors.white))
+                                      : Text(
+                                          _isOnline ? 'ONLINE' : 'OFFLINE',
+                                          style: const TextStyle(
+                                              fontSize: 13,
+                                              fontWeight: FontWeight.w700,
+                                              color: Colors.white)),
+                                ),
+                              ),
+                            ],
                           ),
                         ],
                       ),
                     ),
                     const SizedBox(height: 20),
+                    // Stats
                     Row(
                       children: [
                         _stat(Icons.directions_car, 'Vehicles', '$_vehicleCount'),
@@ -128,16 +238,21 @@ class _VehicleProviderDashboardState
                       ],
                     ),
                     const SizedBox(height: 24),
+                    // Actions
                     const Text('Actions',
                         style: TextStyle(
                             fontSize: 16, fontWeight: FontWeight.w700)),
                     const SizedBox(height: 12),
+                    _action(Icons.local_taxi_outlined, 'Ride Requests',
+                        () => context.go('/vehicle/ride-requests')),
+                    _action(Icons.play_circle_outline, 'Active Trip',
+                        () => context.go('/vehicle/trip')),
+                    _action(Icons.history, 'Ride History',
+                        () => context.go('/vehicle/ride-history')),
                     _action(Icons.directions_car_outlined, 'Manage Vehicles',
                         () => context.go('/vehicle/vehicles')),
                     _action(Icons.add_circle_outline, 'Add Vehicle',
                         () => context.go('/vehicle/vehicles/new')),
-                    _action(Icons.local_taxi_outlined, 'Ride Requests', null),
-                    _action(Icons.history, 'Ride History', null),
                     _action(Icons.account_balance_wallet_outlined, 'Wallet',
                         () => context.go('/wallet')),
                     _action(Icons.person_outline, 'Profile', null),

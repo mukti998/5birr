@@ -29,6 +29,11 @@ import '../features/admin/admin_cash_recharge_screen.dart';
 import '../features/admin/admin_provider_wallet_screen.dart';
 import '../features/approval/pending_approval_screen.dart';
 import '../features/approval/rejected_screen.dart';
+import '../features/vehicle/driver_ride_requests_screen.dart';
+import '../features/vehicle/driver_trip_screen.dart';
+import '../features/user/user_ride_request_screen.dart';
+import '../features/user/user_active_ride_screen.dart';
+import '../features/shared/ride_history_screen.dart';
 
 final appRouterProvider = Provider<GoRouter>((ref) {
   final authState = ref.watch(authProvider);
@@ -95,6 +100,9 @@ final appRouterProvider = Provider<GoRouter>((ref) {
       GoRoute(path: '/user/category/:id', builder: (_, s) => UserCategoryScreen(categoryId: s.pathParameters['id']!)),
       GoRoute(path: '/user/favorites', builder: (_, __) => const UserFavoritesScreen()),
       GoRoute(path: '/user/search', builder: (_, __) => const UserDashboard()),
+      GoRoute(path: '/user/ride-request', builder: (_, __) => const UserRideRequestScreen()),
+      GoRoute(path: '/user/ride-active', builder: (_, __) => const UserActiveRideScreen()),
+      GoRoute(path: '/user/ride-history', builder: (_, __) => const RideHistoryScreen(isProvider: false)),
 
       // ── Service Provider ──
       GoRoute(path: '/provider', builder: (_, __) => const ServiceProviderDashboard()),
@@ -112,6 +120,9 @@ final appRouterProvider = Provider<GoRouter>((ref) {
       GoRoute(path: '/vehicle/vehicles', builder: (_, __) => const VehicleManagementScreen()),
       GoRoute(path: '/vehicle/vehicles/new', builder: (_, __) => const VehicleFormScreen()),
       GoRoute(path: '/vehicle/vehicles/:id', builder: (_, s) => VehicleFormScreen(vehicleId: s.pathParameters['id'])),
+      GoRoute(path: '/vehicle/ride-requests', builder: (_, __) => const DriverRideRequestsScreen()),
+      GoRoute(path: '/vehicle/trip/:id', builder: (_, s) => DriverTripScreen(rideId: s.pathParameters['id']!)),
+      GoRoute(path: '/vehicle/history', builder: (_, __) => const RideHistoryScreen(isProvider: true)),
 
       // ── Admin ──
       GoRoute(path: '/admin', builder: (_, __) => const AdminDashboard()),

@@ -128,6 +128,26 @@ class _UserHomeScreenState extends State<UserHomeScreen> {
                             ),
                           ),
                         ),
+                        const SizedBox(height: 12),
+                        // Quick ride button
+                        GestureDetector(
+                          onTap: () => context.go('/user/ride-request'),
+                          child: Container(
+                            padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+                            decoration: BoxDecoration(
+                              color: AppTheme.teal.withOpacity(0.3),
+                              borderRadius: BorderRadius.circular(10),
+                            ),
+                            child: const Row(
+                              children: [
+                                Icon(Icons.local_taxi, color: Colors.white, size: 20),
+                                SizedBox(width: 10),
+                                Text('Request a Ride',
+                                    style: TextStyle(color: Colors.white, fontSize: 14, fontWeight: FontWeight.w600)),
+                              ],
+                            ),
+                          ),
+                        ),
                       ],
                     ),
                   ),
