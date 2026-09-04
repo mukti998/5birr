@@ -1,0 +1,299 @@
+import 'dart:async';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:supabase_flutter/supabase_flutter.dart';
+import '../models/models.dart';
+import '../services/supabase_service.dart';
+
+/// Application roles matching the Supabase `app_role` enum.
+enum AppUserRole { user, vehicleProvider, serviceProvider, admin }
+
+/// Complete auth state for the application.
+class AuthState {
+  final User? user;
+  final UserProfile? profile;
+  final List<AppUserRole> roles;
+  final AppUserRole? primaryRole;
+  final bool isLoading;
+  final String? error;
+
+  const AuthState({
+    this.user,
+    this.profile,
+    this.roles = const [],
+    this.primaryRole,
+    this.isLoading = true,
+    this.error,
+  });
+
+  AuthState copyWith({
+    User? user,
+    UserProfile? profile,
+    List<AppUserRole>? roles,
+    AppUserRole? primaryRole,
+    bool? isLoading,
+    String? error,
+  }) {
+    return AuthState(
+      user: user ?? this.user,
+      profile: profile ?? this.profile,
+      roles: roles ?? this.roles,
+      primaryRole: primaryRole ?? this.primaryRole,
+      isLoading: isLoading ?? this.isLoading,
+      error: error,
+    );
+  }
+
+  bool get isAuthenticated => user != null;
+  bool get isAdmin => roles.contains(AppUserRole.admin);
+  bool get isVehicleProvider => roles.contains(AppUserRole.vehicleProvider);
+  bool get isServiceProvider => roles.contains(AppUserRole.serviceProvider);
+  bool get isUser => roles.contains(AppUserRole.user);
+  bool get isPendingApproval =>
+      profile != null && profile!.status == 'PENDING_APPROVAL';
+  bool get isApproved =>
+      profile != null && profile!.status == 'APPROVED';
+  bool get isRejected =>
+      profile != null && profile!.status == 'REJECTED';
+}
+
+/// Auth state notifier managing Supabase auth + profile + roles.
+class AuthNotifier extends StateNotifier<AuthState> {
+  final SupabaseService _svc;
+  StreamSubscription<AuthState?>? _authSub;
+
+  AuthNotifier(this._svc) : super(const AuthState(isLoading: true)) {
+    _init();
+  }
+
+  void _init() {
+    // Listen for auth state changes
+    _authSub = _svc.authStateChanges.listen((authState) async {
+      final event = authState.event;
+      final session = authState.session;
+
+      if (event == AuthChangeEvent.signedIn && session != null) {
+        await _loadUserProfile(session.user);
+      } else if (event == AuthChangeEvent.signedOut) {
+        state = const AuthState(isLoading: false);
+      } else if (event == AuthChangeEvent.tokenRefreshed && session != null) {
+        await _loadUserProfile(session.user);
+      }
+    });
+
+    // Check existing session
+    final currentSession = _svc.client.auth.currentSession;
+    if (currentSession != null) {
+      _loadUserProfile(currentSession.user);
+    } else {
+      state = const AuthState(isLoading: false);
+    }
+  }
+
+  Future<void> _loadUserProfile(User user) async {
+    try {
+      // Load profile
+      final profileData = await _svc.client
+          .from('profiles')
+          .select()
+          .eq('id', user.id)
+          .maybeSingle();
+
+      UserProfile? profile;
+      if (profileData != null) {
+        profile = UserProfile.fromJson(profileData);
+      }
+
+      // Load roles
+      final rolesData = await _svc.client
+          .from('user_roles')
+          .select('role')
+          .eq('user_id', user.id);
+
+      final roles = (rolesData as List)
+          .map((r) => _parseRole(r['role'] as String))
+          .toList();
+
+      final primaryRole = roles.firstWhere(
+        (r) => r != AppUserRole.user,
+        orElse: () => AppUserRole.user,
+      );
+
+      state = state.copyWith(
+        user: user,
+        profile: profile,
+        roles: roles,
+        primaryRole: primaryRole,
+        isLoading: false,
+        error: null,
+      );
+    } catch (e) {
+      state = state.copyWith(
+        user: user,
+        isLoading: false,
+        error: e.toString(),
+      );
+    }
+  }
+
+  AppUserRole _parseRole(String role) {
+    switch (role) {
+      case 'ADMIN':
+        return AppUserRole.admin;
+      case 'VEHICLE_PROVIDER':
+        return AppUserRole.vehicleProvider;
+      case 'SERVICE_PROVIDER':
+        return AppUserRole.serviceProvider;
+      default:
+        return AppUserRole.user;
+    }
+  }
+
+  /// Sign up with phone + password, then create profile and assign role.
+  /// The profile insert triggers auto-creation of the approval request
+  /// via the trg_profiles_auto_approval_request database trigger.
+  Future<void> signUp({
+    required String phone,
+    required String password,
+    required String fullName,
+    required String nationalId,
+    required AppUserRole role,
+  }) async {
+    state = state.copyWith(isLoading: true, error: null);
+    try {
+      final response = await _svc.client.auth.signUp(
+        phone: phone,
+        password: password,
+        data: {
+          'full_name': fullName,
+          'national_id': nationalId,
+        },
+      );
+
+      if (response.user == null) {
+        throw Exception('Sign up failed: no user returned');
+      }
+
+      // Profile insert — the database trigger auto-creates the approval
+      // request, so no client-side approval_requests insert is needed.
+      await _svc.client.from('profiles').upsert({
+        'id': response.user!.id,
+        'full_name': fullName,
+        'phone': phone,
+        'national_id': nationalId,
+        'status': 'PENDING_APPROVAL',
+      });
+
+      await _loadUserProfile(response.user!);
+    } catch (e) {
+      state = state.copyWith(isLoading: false, error: e.toString());
+      rethrow;
+    }
+  }
+
+  /// Sign up as a provider (vehicle or service).
+  /// The provider_profiles insert triggers auto-creation of the approval
+  /// request and role assignment via the trg_provider_profiles_auto_setup
+  /// database trigger — no client-side approval_requests or user_roles
+  /// inserts are needed (and they would be blocked by RLS anyway).
+  Future<void> signUpAsProvider({
+    required String phone,
+    required String password,
+    required String businessName,
+    required String ownerNationalId,
+    required String providerType,
+  }) async {
+    state = state.copyWith(isLoading: true, error: null);
+    try {
+      final response = await _svc.client.auth.signUp(
+        phone: phone,
+        password: password,
+      );
+
+      if (response.user == null) {
+        throw Exception('Sign up failed');
+      }
+
+      // Create profile
+      await _svc.client.from('profiles').upsert({
+        'id': response.user!.id,
+        'full_name': businessName,
+        'phone': phone,
+        'national_id': ownerNationalId,
+        'status': 'PENDING_APPROVAL',
+      });
+
+      // Create provider profile — the database trigger auto-creates the
+      // approval request and assigns the provider role.
+      await _svc.client
+          .from('provider_profiles')
+          .insert({
+            'user_id': response.user!.id,
+            'provider_type': providerType,
+            'business_name': businessName,
+            'owner_national_id': ownerNationalId,
+            'status': 'PENDING_APPROVAL',
+          })
+          .select()
+          .single();
+
+      await _loadUserProfile(response.user!);
+    } catch (e) {
+      state = state.copyWith(isLoading: false, error: e.toString());
+      rethrow;
+    }
+  }
+
+  /// Sign in with phone + password.
+  Future<void> signIn({
+    required String phone,
+    required String password,
+  }) async {
+    state = state.copyWith(isLoading: true, error: null);
+    try {
+      final response = await _svc.client.auth.signInWithPassword(
+        phone: phone,
+        password: password,
+      );
+      if (response.user != null) {
+        await _loadUserProfile(response.user!);
+      }
+    } catch (e) {
+      state = state.copyWith(isLoading: false, error: e.toString());
+      rethrow;
+    }
+  }
+
+  /// Sign out.
+  Future<void> signOut() async {
+    await _svc.client.auth.signOut();
+    state = const AuthState(isLoading: false);
+  }
+
+  /// Refresh profile from database.
+  Future<void> refreshProfile() async {
+    if (state.user != null) {
+      await _loadUserProfile(state.user!);
+    }
+  }
+
+  @override
+  void dispose() {
+    _authSub?.cancel();
+    super.dispose();
+  }
+}
+
+/// Provider instance.
+final authProvider = StateNotifierProvider<AuthNotifier, AuthState>((ref) {
+  return AuthNotifier(SupabaseService.instance);
+});
+
+/// Convenience provider: is the user authenticated?
+final isAuthenticatedProvider = Provider<bool>((ref) {
+  return ref.watch(authProvider).isAuthenticated;
+});
+
+/// Convenience provider: the user's primary non-USER role.
+final primaryRoleProvider = Provider<AppUserRole?>((ref) {
+  return ref.watch(authProvider).primaryRole;
+});

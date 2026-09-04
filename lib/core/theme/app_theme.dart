@@ -1,0 +1,209 @@
+import 'package:flutter/material.dart';
+
+/// 5BIRR Design System — inspired by the Ethiopian 5 Birr note.
+/// Primary: deep green, Secondary: teal, Background: cream/off-white.
+class AppTheme {
+  AppTheme._();
+
+  // ── Brand Colors ──────────────────────────────────────────────
+  static const Color primaryGreen = Color(0xFF1B5E20);
+  static const Color primaryGreenLight = Color(0xFF388E3C);
+  static const Color primaryGreenDark = Color(0xFF0D3B12);
+  static const Color teal = Color(0xFF00897B);
+  static const Color tealLight = Color(0xFF4DB6AC);
+  static const Color cream = Color(0xFFF5F1E8);
+  static const Color creamDark = Color(0xFFE8E0D0);
+  static const Color gold = Color(0xFFC6A832);
+  static const Color goldLight = Color(0xFFE0C850);
+
+  // ── Semantic Colors ───────────────────────────────────────────
+  static const Color success = Color(0xFF2E7D32);
+  static const Color warning = Color(0xFFF9A825);
+  static const Color error = Color(0xFFC62828);
+  static const Color info = Color(0xFF1565C0);
+
+  // ── Text Colors ───────────────────────────────────────────────
+  static const Color textPrimary = Color(0xFF1A1A1A);
+  static const Color textSecondary = Color(0xFF5A5A5A);
+  static const Color textMuted = Color(0xFF8A8A8A);
+  static const Color textOnPrimary = Colors.white;
+
+  // ── Surface Colors ────────────────────────────────────────────
+  static const Color surface = Colors.white;
+  static const Color surfaceVariant = Color(0xFFF8F6F2);
+  static const Color background = cream;
+  static const Color cardBorder = Color(0xFFE0D8C8);
+
+  // ── Light Theme ───────────────────────────────────────────────
+  static ThemeData get lightTheme {
+    return ThemeData(
+      useMaterial3: true,
+      brightness: Brightness.light,
+      colorScheme: ColorScheme.light(
+        primary: primaryGreen,
+        onPrimary: textOnPrimary,
+        secondary: teal,
+        onSecondary: textOnPrimary,
+        surface: surface,
+        onSurface: textPrimary,
+        error: error,
+        onError: textOnPrimary,
+      ),
+      scaffoldBackgroundColor: background,
+      appBarTheme: const AppBarTheme(
+        backgroundColor: primaryGreen,
+        foregroundColor: textOnPrimary,
+        elevation: 0,
+        centerTitle: true,
+        titleTextStyle: TextStyle(
+          fontSize: 18,
+          fontWeight: FontWeight.w600,
+          color: textOnPrimary,
+          letterSpacing: 0.5,
+        ),
+      ),
+      cardTheme: CardTheme(
+        color: surface,
+        elevation: 1,
+        shape: RoundedRectangleBorder(
+          borderRadius: BorderRadius.circular(12),
+          side: const BorderSide(color: cardBorder, width: 0.5),
+        ),
+        margin: const EdgeInsets.symmetric(horizontal: 16, vertical: 6),
+      ),
+      elevatedButtonTheme: ElevatedButtonThemeData(
+        style: ElevatedButton.styleFrom(
+          backgroundColor: primaryGreen,
+          foregroundColor: textOnPrimary,
+          elevation: 0,
+          padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 14),
+          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+          textStyle: const TextStyle(
+            fontSize: 16,
+            fontWeight: FontWeight.w600,
+            letterSpacing: 0.3,
+          ),
+        ),
+      ),
+      outlinedButtonTheme: OutlinedButtonThemeData(
+        style: OutlinedButton.styleFrom(
+          foregroundColor: primaryGreen,
+          side: const BorderSide(color: primaryGreen, width: 1.5),
+          padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 14),
+          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+          textStyle: const TextStyle(
+            fontSize: 16,
+            fontWeight: FontWeight.w600,
+          ),
+        ),
+      ),
+      textButtonTheme: TextButtonThemeData(
+        style: TextButton.styleFrom(
+          foregroundColor: primaryGreen,
+          textStyle: const TextStyle(
+            fontSize: 14,
+            fontWeight: FontWeight.w500,
+          ),
+        ),
+      ),
+      inputDecorationTheme: InputDecorationTheme(
+        filled: true,
+        fillColor: surface,
+        border: OutlineInputBorder(
+          borderRadius: BorderRadius.circular(10),
+          borderSide: const BorderSide(color: cardBorder),
+        ),
+        enabledBorder: OutlineInputBorder(
+          borderRadius: BorderRadius.circular(10),
+          borderSide: const BorderSide(color: cardBorder),
+        ),
+        focusedBorder: OutlineInputBorder(
+          borderRadius: BorderRadius.circular(10),
+          borderSide: const BorderSide(color: primaryGreen, width: 2),
+        ),
+        errorBorder: OutlineInputBorder(
+          borderRadius: BorderRadius.circular(10),
+          borderSide: const BorderSide(color: error),
+        ),
+        contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
+        labelStyle: const TextStyle(color: textSecondary),
+        hintStyle: const TextStyle(color: textMuted),
+      ),
+      bottomNavigationBarTheme: const BottomNavigationBarThemeData(
+        backgroundColor: surface,
+        selectedItemColor: primaryGreen,
+        unselectedItemColor: textMuted,
+        type: BottomNavigationBarType.fixed,
+        elevation: 8,
+      ),
+      chipTheme: ChipThemeData(
+        backgroundColor: creamDark,
+        selectedColor: primaryGreen,
+        labelStyle: const TextStyle(fontSize: 12),
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
+      ),
+      dividerTheme: const DividerThemeData(
+        color: cardBorder,
+        thickness: 0.5,
+        space: 1,
+      ),
+    );
+  }
+
+  // ── Dark Theme ────────────────────────────────────────────────
+  static ThemeData get darkTheme {
+    return ThemeData(
+      useMaterial3: true,
+      brightness: Brightness.dark,
+      colorScheme: ColorScheme.dark(
+        primary: tealLight,
+        onPrimary: textPrimary,
+        secondary: teal,
+        onSecondary: textOnPrimary,
+        surface: const Color(0xFF1E1E1E),
+        onSurface: Colors.white,
+        error: error,
+      ),
+      scaffoldBackgroundColor: const Color(0xFF121212),
+      appBarTheme: const AppBarTheme(
+        backgroundColor: Color(0xFF1B5E20),
+        foregroundColor: Colors.white,
+        elevation: 0,
+        centerTitle: true,
+      ),
+      cardTheme: CardTheme(
+        color: const Color(0xFF1E1E1E),
+        elevation: 2,
+        shape: RoundedRectangleBorder(
+          borderRadius: BorderRadius.circular(12),
+        ),
+      ),
+    );
+  }
+
+  // ── Ethiopian Pattern Decoration ──────────────────────────────
+  static BoxDecoration get ethiopianPatternDecoration {
+    return const BoxDecoration(
+      gradient: LinearGradient(
+        begin: Alignment.topLeft,
+        end: Alignment.bottomRight,
+        colors: [primaryGreen, primaryGreenDark],
+      ),
+    );
+  }
+
+  static BoxDecoration get cardDecoration {
+    return BoxDecoration(
+      color: surface,
+      borderRadius: BorderRadius.circular(12),
+      border: Border.all(color: cardBorder, width: 0.5),
+      boxShadow: [
+        BoxShadow(
+          color: Colors.black.withOpacity(0.04),
+          blurRadius: 8,
+          offset: const Offset(0, 2),
+        ),
+      ],
+    );
+  }
+}
