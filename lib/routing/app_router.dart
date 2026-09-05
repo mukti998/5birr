@@ -12,6 +12,8 @@ import '../features/user/user_product_detail_screen.dart';
 import '../features/user/user_provider_detail_screen.dart';
 import '../features/user/user_category_screen.dart';
 import '../features/user/user_favorites_screen.dart';
+import '../features/user/user_cart_screen.dart';
+import '../features/user/user_checkout_screen.dart';
 import '../features/provider/service_provider_dashboard.dart';
 import '../features/provider/provider_business_profile_screen.dart';
 import '../features/provider/provider_product_list_screen.dart';
@@ -99,6 +101,8 @@ final appRouterProvider = Provider<GoRouter>((ref) {
       GoRoute(path: '/user/provider/:id', builder: (_, s) => UserProviderDetailScreen(providerId: s.pathParameters['id']!)),
       GoRoute(path: '/user/category/:id', builder: (_, s) => UserCategoryScreen(categoryId: s.pathParameters['id']!)),
       GoRoute(path: '/user/favorites', builder: (_, __) => const UserFavoritesScreen()),
+      GoRoute(path: '/user/cart', builder: (_, __) => const UserCartScreen()),
+      GoRoute(path: '/user/checkout', builder: (_, s) => UserCheckoutScreen(providerId: s.extra as String)),
       GoRoute(path: '/user/search', builder: (_, __) => const UserSearchScreen()),
       GoRoute(path: '/user/ride-request', builder: (_, __) => const UserRideRequestScreen()),
       GoRoute(path: '/user/ride-active', builder: (_, __) => const UserActiveRideScreen()),

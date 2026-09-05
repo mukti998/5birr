@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:go_router/go_router.dart';
 import '../../core/providers/auth_provider.dart';
 import '../../core/widgets/birr_bottom_nav.dart';
 import 'user_home_screen.dart';
@@ -16,6 +17,7 @@ class UserDashboard extends ConsumerStatefulWidget {
 
 class _UserDashboardState extends ConsumerState<UserDashboard> {
   int _navIndex = 0;
+  bool _initFromRoute = false;
 
   final _screens = const [
     UserHomeScreen(),
@@ -24,6 +26,23 @@ class _UserDashboardState extends ConsumerState<UserDashboard> {
     UserNotificationsScreen(),
     UserProfileScreen(),
   ];
+
+  @override
+  void didChangeDependencies() {
+    super.didChangeDependencies();
+    // Optional ?tab=N query param lets flows (e.g. checkout success) open a
+    // specific tab. Defaults to 0 (Home) for all existing navigation.
+    if (!_initFromRoute) {
+      _initFromRoute = true;
+      final tab = GoRouterState.of(context).uri.queryParameters['tab'];
+      if (tab != null) {
+        final parsed = int.tryParse(tab);
+        if (parsed != null && parsed >= 0 && parsed < _screens.length) {
+          _navIndex = parsed;
+        }
+      }
+    }
+  }
 
   @override
   Widget build(BuildContext context) {

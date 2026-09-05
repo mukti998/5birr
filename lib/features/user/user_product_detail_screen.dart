@@ -1,21 +1,24 @@
 import 'package:flutter/material.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 import 'package:cached_network_image/cached_network_image.dart';
 import '../../core/theme/app_theme.dart';
 import '../../core/services/favorites_service.dart';
+import '../../core/services/cart_service.dart';
 
-class UserProductDetailScreen extends StatefulWidget {
+class UserProductDetailScreen extends ConsumerStatefulWidget {
   final String productId;
   const UserProductDetailScreen({super.key, required this.productId});
   @override
-  State<UserProductDetailScreen> createState() => _State();
+  ConsumerState<UserProductDetailScreen> createState() => _State();
 }
 
-class _State extends State<UserProductDetailScreen> {
+class _State extends ConsumerState<UserProductDetailScreen> {
   Map<String, dynamic>? _product;
   bool _loading = true;
   bool _fav = false;
+  bool _adding = false;
 
   @override
   void initState() {
@@ -206,15 +209,32 @@ class _State extends State<UserProductDetailScreen> {
           child: SizedBox(
             width: double.infinity,
             child: ElevatedButton(
-              onPressed: () {
-                ScaffoldMessenger.of(context).showSnackBar(
-                    const SnackBar(content: Text('Order flow coming soon')));
-              },
-              child: const Text('CONTACT / ORDER'),
+              onPressed: _adding ? null : _addToCart,
+              child: Text(_adding ? 'ADDING…' : 'ADD TO CART'),
             ),
           ),
         ),
       ),
     );
+  }
+
+  Future<void> _addToCart() async {
+    setState(() => _adding = true);
+    try {
+      await CartService.instance
+          .addToCart(productId: widget.productId, quantity: 1);
+      ref.invalidate(cartCountProvider);
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+            const SnackBar(content: Text('Added to cart')));
+      }
+    } catch (e) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(content: Text('Could not add to cart: $e')));
+      }
+    } finally {
+      if (mounted) setState(() => _adding = false);
+    }
   }
 }
