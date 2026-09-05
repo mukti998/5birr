@@ -14,7 +14,9 @@ import '../features/user/user_category_screen.dart';
 import '../features/user/user_favorites_screen.dart';
 import '../features/user/user_cart_screen.dart';
 import '../features/user/user_checkout_screen.dart';
+import '../features/user/user_order_detail_screen.dart';
 import '../features/provider/service_provider_dashboard.dart';
+import '../features/provider/provider_orders_screen.dart';
 import '../features/provider/provider_business_profile_screen.dart';
 import '../features/provider/provider_product_list_screen.dart';
 import '../features/provider/provider_product_form_screen.dart';
@@ -103,6 +105,7 @@ final appRouterProvider = Provider<GoRouter>((ref) {
       GoRoute(path: '/user/favorites', builder: (_, __) => const UserFavoritesScreen()),
       GoRoute(path: '/user/cart', builder: (_, __) => const UserCartScreen()),
       GoRoute(path: '/user/checkout', builder: (_, s) => UserCheckoutScreen(providerId: s.extra as String)),
+      GoRoute(path: '/user/orders/:id', builder: (_, s) => UserOrderDetailScreen(orderId: s.pathParameters['id']!, viewerRole: s.extra as String? ?? 'user')),
       GoRoute(path: '/user/search', builder: (_, __) => const UserSearchScreen()),
       GoRoute(path: '/user/ride-request', builder: (_, __) => const UserRideRequestScreen()),
       GoRoute(path: '/user/ride-active', builder: (_, __) => const UserActiveRideScreen()),
@@ -111,6 +114,7 @@ final appRouterProvider = Provider<GoRouter>((ref) {
       // ── Service Provider ──
       GoRoute(path: '/provider', builder: (_, __) => const ServiceProviderDashboard()),
       GoRoute(path: '/provider/business', builder: (_, __) => const ProviderBusinessProfileScreen()),
+      GoRoute(path: '/provider/orders', builder: (_, __) => const ProviderOrdersScreen()),
       GoRoute(path: '/provider/products', builder: (_, __) => const ProviderProductListScreen()),
       GoRoute(path: '/provider/products/new', builder: (_, __) => const ProviderProductFormScreen()),
       GoRoute(path: '/provider/products/:id', builder: (_, s) => ProviderProductFormScreen(productId: s.pathParameters['id'])),

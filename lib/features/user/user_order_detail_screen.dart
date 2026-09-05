@@ -1,0 +1,587 @@
+import 'package:flutter/material.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:go_router/go_router.dart';
+import 'package:cached_network_image/cached_network_image.dart';
+import 'package:supabase_flutter/supabase_flutter.dart';
+import '../../core/theme/app_theme.dart';
+import '../../core/widgets/primary_button.dart';
+
+/// Statuses from which CANCELLED is a legal transition
+/// (see transition_order_status whitelist in 0003_functions.sql).
+const _cancellableStatuses = {
+  'CREATED',
+  'PENDING_PROVIDER',
+  'ACCEPTED',
+  'PAYMENT_PENDING',
+  'APPROVED',
+  'STARTED',
+};
+
+/// Shared status → color mapping for order UIs.
+Color orderStatusColor(String status) {
+  switch (status) {
+    case 'COMPLETED':
+    case 'REFUNDED':
+      return AppTheme.success;
+    case 'CANCELLED':
+    case 'REJECTED':
+      return AppTheme.error;
+    case 'DISPUTED':
+      return AppTheme.gold;
+    case 'CREATED':
+    case 'PENDING_PROVIDER':
+    case 'PAYMENT_PENDING':
+    case 'PAYMENT_VERIFICATION':
+      return AppTheme.gold;
+    default: // ACCEPTED, APPROVED, STARTED
+      return AppTheme.teal;
+  }
+}
+
+/// Shared order detail view. `viewerRole` is 'user' (default) or 'provider' —
+/// it controls which action buttons are offered. All status changes go
+/// through the existing order-transition Edge Function.
+class UserOrderDetailScreen extends ConsumerStatefulWidget {
+  final String orderId;
+  final String viewerRole;
+  const UserOrderDetailScreen({
+    super.key,
+    required this.orderId,
+    this.viewerRole = 'user',
+  });
+  @override
+  ConsumerState<UserOrderDetailScreen> createState() =>
+      _UserOrderDetailScreenState();
+}
+
+class _UserOrderDetailScreenState
+    extends ConsumerState<UserOrderDetailScreen> {
+  Map<String, dynamic>? _order;
+  List<Map<String, dynamic>> _timeline = [];
+  Map<String, String> _actorNames = {};
+  String? _proofUrl;
+  bool _loading = true;
+  bool _acting = false;
+  String? _error;
+
+  bool get _isProvider => widget.viewerRole == 'provider';
+
+  @override
+  void initState() {
+    super.initState();
+    _load();
+  }
+
+  Future<void> _load() async {
+    try {
+      final client = Supabase.instance.client;
+      final order = await client
+          .from('orders')
+          .select(
+              '*, provider_profiles(business_name), order_items(product_id, quantity, unit_price, subtotal, products(name, price, currency))')
+          .eq('id', widget.orderId)
+          .single();
+      final timeline = await client
+          .from('order_status_history')
+          .select('*')
+          .eq('order_id', widget.orderId)
+          .order('created_at', ascending: true);
+
+      // Resolve actor names (best-effort; timeline still shows without them).
+      final names = <String, String>{};
+      try {
+        final actorIds = (timeline as List)
+            .map((t) => t['changed_by'] as String?)
+            .whereType<String>()
+            .toSet()
+            .toList();
+        if (actorIds.isNotEmpty) {
+          final profiles = await client
+              .from('profiles')
+              .select('id, full_name')
+              .in_('id', actorIds);
+          for (final p in profiles as List) {
+            names[p['id'] as String] = p['full_name'] as String? ?? '';
+          }
+        }
+      } catch (_) {}
+
+      String? proofUrl;
+      final proof = await client
+          .from('payment_proofs')
+          .select('storage_path')
+          .eq('order_id', widget.orderId)
+          .maybeSingle();
+      if (proof != null && proof['storage_path'] != null) {
+        proofUrl = await client.storage
+            .from('payment-proofs')
+            .createSignedUrl(proof['storage_path'] as String, 3600);
+      }
+
+      if (mounted) {
+        setState(() {
+          _order = order;
+          _timeline = List<Map<String, dynamic>>.from(timeline as List);
+          _actorNames = names;
+          _proofUrl = proofUrl;
+          _loading = false;
+          _error = null;
+        });
+      }
+    } catch (e) {
+      if (mounted) {
+        setState(() {
+          _loading = false;
+          _error = 'Could not load order';
+        });
+      }
+    }
+  }
+
+  bool get _canCancel {
+    final status = _order?['status'] as String?;
+    return status != null && _cancellableStatuses.contains(status);
+  }
+
+  /// Provider status actions allowed by the transition whitelist.
+  List<({String status, String label, IconData icon})>
+      get _providerActions {
+    final status = _order?['status'] as String?;
+    switch (status) {
+      case 'PENDING_PROVIDER':
+        return [
+          (
+            status: 'ACCEPTED',
+            label: 'Accept Order',
+            icon: Icons.check_circle_outline,
+          ),
+          (
+            status: 'REJECTED',
+            label: 'Reject',
+            icon: Icons.cancel_outlined,
+          ),
+        ];
+      case 'ACCEPTED':
+        return [
+          (
+            status: 'PAYMENT_PENDING',
+            label: 'Request Payment',
+            icon: Icons.payment,
+          ),
+        ];
+      case 'APPROVED':
+        return [
+          (
+            status: 'STARTED',
+            label: 'Mark In Progress',
+            icon: Icons.play_circle_outline,
+          ),
+        ];
+      case 'STARTED':
+        return [
+          (
+            status: 'COMPLETED',
+            label: 'Mark Completed',
+            icon: Icons.flag_outlined,
+          ),
+        ];
+      default:
+        return [];
+    }
+  }
+
+  Future<void> _cancelOrder() async {
+    final confirmed = await showDialog<bool>(
+      context: context,
+      builder: (dctx) => AlertDialog(
+        title: const Text('Cancel order?'),
+        content: const Text(
+            'This will cancel the order. This cannot be undone.'),
+        actions: [
+          TextButton(
+              onPressed: () => dctx.pop(false),
+              child: const Text('KEEP ORDER')),
+          TextButton(
+              onPressed: () => dctx.pop(true),
+              child: const Text('CANCEL ORDER')),
+        ],
+      ),
+    );
+    if (confirmed != true) return;
+    await _transition('CANCELLED', note: 'Cancelled by customer');
+  }
+
+  Future<void> _transition(String newStatus, {String? note}) async {
+    setState(() => _acting = true);
+    try {
+      await Supabase.instance.client.functions.invoke('order-transition',
+          body: {
+            'order_id': widget.orderId,
+            'new_status': newStatus,
+            if (note != null) 'note': note,
+          });
+      if (!mounted) return;
+      setState(() => _acting = false);
+      ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('Order ${_label(newStatus)}')));
+      await _load();
+    } catch (e) {
+      if (!mounted) return;
+      setState(() => _acting = false);
+      final s = e.toString().replaceFirst(RegExp(r'^FunctionException:\s*'), '');
+      ScaffoldMessenger.of(context)
+          .showSnackBar(SnackBar(content: Text('Action failed: $s')));
+    }
+  }
+
+  String _label(String status) => status.replaceAll('_', ' ');
+
+  @override
+  Widget build(BuildContext context) {
+    return Scaffold(
+      appBar: AppBar(title: const Text('Order Details')),
+      body: _loading
+          ? const Center(
+              child: CircularProgressIndicator(color: AppTheme.primaryGreen))
+          : _error != null
+              ? Center(
+                  child: Column(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      const Icon(Icons.error_outline,
+                          size: 48, color: AppTheme.textMuted),
+                      const SizedBox(height: 12),
+                      Text(_error!,
+                          style:
+                              const TextStyle(color: AppTheme.textMuted)),
+                    ],
+                  ),
+                )
+              : RefreshIndicator(
+                  onRefresh: _load,
+                  child: SingleChildScrollView(
+                    padding: const EdgeInsets.all(16),
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        _headerCard(),
+                        const SizedBox(height: 16),
+                        _itemsCard(),
+                        const SizedBox(height: 16),
+                        if (_proofUrl != null) _proofCard(),
+                        if (_proofUrl != null) const SizedBox(height: 16),
+                        _timelineCard(),
+                        const SizedBox(height: 20),
+                        if (_isProvider && _providerActions.isNotEmpty)
+                          ..._providerActions.map((a) => Padding(
+                                padding:
+                                    const EdgeInsets.only(bottom: 8),
+                                child: SizedBox(
+                                  width: double.infinity,
+                                  child: a.status == 'REJECTED'
+                                      ? OutlinedButton.icon(
+                                          onPressed: _acting
+                                              ? null
+                                              : () => _transition(a.status),
+                                          icon: Icon(a.icon,
+                                              size: 18,
+                                              color: AppTheme.error),
+                                          label: Text(a.label),
+                                          style: OutlinedButton.styleFrom(
+                                              foregroundColor:
+                                                  AppTheme.error),
+                                        )
+                                      : PrimaryButton(
+                                          label: a.label,
+                                          icon: a.icon,
+                                          isLoading: _acting,
+                                          onPressed: () =>
+                                              _transition(a.status),
+                                        ),
+                                ),
+                              )),
+                        if (!_isProvider && _canCancel)
+                          SizedBox(
+                            width: double.infinity,
+                            child: OutlinedButton.icon(
+                              onPressed: _acting ? null : _cancelOrder,
+                              icon: const Icon(Icons.cancel_outlined,
+                                  size: 18, color: AppTheme.error),
+                              label: const Text('CANCEL ORDER'),
+                              style: OutlinedButton.styleFrom(
+                                  foregroundColor: AppTheme.error),
+                            ),
+                          ),
+                        const SizedBox(height: 24),
+                      ],
+                    ),
+                  ),
+                ),
+    );
+  }
+
+  Widget _headerCard() {
+    final o = _order!;
+    final status = (o['status'] as String?) ?? 'UNKNOWN';
+    final provider =
+        (o['provider_profiles'] as Map<String, dynamic>?) ?? const {};
+    return Container(
+      width: double.infinity,
+      padding: const EdgeInsets.all(16),
+      decoration: BoxDecoration(
+        color: AppTheme.surface,
+        borderRadius: BorderRadius.circular(12),
+        border: Border.all(color: AppTheme.cardBorder),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            children: [
+              Expanded(
+                child: Text('Order #${(o['id'] as String).substring(0, 8)}',
+                    style: const TextStyle(
+                        fontSize: 16, fontWeight: FontWeight.w700)),
+              ),
+              Container(
+                padding:
+                    const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+                decoration: BoxDecoration(
+                  color: orderStatusColor(status).withOpacity(0.12),
+                  borderRadius: BorderRadius.circular(12),
+                ),
+                child: Text(_label(status),
+                    style: TextStyle(
+                        fontSize: 12,
+                        fontWeight: FontWeight.w600,
+                        color: orderStatusColor(status))),
+              ),
+            ],
+          ),
+          const SizedBox(height: 8),
+          Text('Created ${_fmtDate(DateTime.parse(o['created_at'] as String))}',
+              style: const TextStyle(
+                  fontSize: 12, color: AppTheme.textSecondary)),
+          if (provider['business_name'] != null) ...[
+            const SizedBox(height: 4),
+            Text(provider['business_name'] as String,
+                style: const TextStyle(
+                    fontSize: 13,
+                    fontWeight: FontWeight.w500,
+                    color: AppTheme.teal)),
+          ],
+        ],
+      ),
+    );
+  }
+
+  Widget _itemsCard() {
+    final o = _order!;
+    final items = (o['order_items'] as List?) ?? const [];
+    final total = (o['total_amount'] as num).toDouble();
+    final currency = o['currency'] as String? ?? 'ETB';
+    return Container(
+      width: double.infinity,
+      padding: const EdgeInsets.all(16),
+      decoration: BoxDecoration(
+        color: AppTheme.surface,
+        borderRadius: BorderRadius.circular(12),
+        border: Border.all(color: AppTheme.cardBorder),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          const Text('Items',
+              style: TextStyle(fontSize: 15, fontWeight: FontWeight.w600)),
+          const SizedBox(height: 8),
+          for (final item in items)
+            Padding(
+              padding: const EdgeInsets.symmetric(vertical: 6),
+              child: Row(
+                children: [
+                  Expanded(
+                    child: Text(_itemName(item),
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis,
+                        style: const TextStyle(
+                            fontSize: 13, fontWeight: FontWeight.w500)),
+                  ),
+                  const SizedBox(width: 8),
+                  Text(
+                      '${item['quantity']} × '
+                      '${(item['unit_price'] as num).toDouble().toStringAsFixed(2)}',
+                      style: const TextStyle(
+                          fontSize: 13, color: AppTheme.textSecondary)),
+                  const SizedBox(width: 12),
+                  Text(
+                      _lineTotal(item),
+                      style: const TextStyle(
+                          fontSize: 13, fontWeight: FontWeight.w600)),
+                ],
+              ),
+            ),
+          const Divider(height: 20),
+          Row(
+            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+            children: [
+              const Text('Total',
+                  style: TextStyle(
+                      fontSize: 14, fontWeight: FontWeight.w700)),
+              Text('${total.toStringAsFixed(2)} $currency',
+                  style: const TextStyle(
+                      fontSize: 15,
+                      fontWeight: FontWeight.w700,
+                      color: AppTheme.primaryGreen)),
+            ],
+          ),
+        ],
+      ),
+    );
+  }
+
+  String _itemName(Map<String, dynamic> item) {
+    final product = item['products'] as Map<String, dynamic>?;
+    if (product == null) return 'Product unavailable';
+    return product['name'] as String? ?? 'Product unavailable';
+  }
+
+  String _lineTotal(Map<String, dynamic> item) {
+    final lineTotal = (item['subtotal'] as num?)?.toDouble() ??
+        (item['quantity'] as num).toDouble() *
+            (item['unit_price'] as num).toDouble();
+    return lineTotal.toStringAsFixed(2);
+  }
+
+  Widget _proofCard() {
+    return Container(
+      width: double.infinity,
+      padding: const EdgeInsets.all(16),
+      decoration: BoxDecoration(
+        color: AppTheme.surface,
+        borderRadius: BorderRadius.circular(12),
+        border: Border.all(color: AppTheme.cardBorder),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          const Text('Payment Proof',
+              style: TextStyle(fontSize: 15, fontWeight: FontWeight.w600)),
+          const SizedBox(height: 10),
+          ClipRRect(
+            borderRadius: BorderRadius.circular(8),
+            child: CachedNetworkImage(
+              imageUrl: _proofUrl!,
+              height: 140,
+              width: double.infinity,
+              fit: BoxFit.cover,
+              errorWidget: (_, __, ___) => Container(
+                height: 140,
+                color: AppTheme.creamDark,
+                child: const Center(
+                    child: Icon(Icons.image_outlined,
+                        size: 40, color: AppTheme.textMuted)),
+              ),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _timelineCard() {
+    return Container(
+      width: double.infinity,
+      padding: const EdgeInsets.all(16),
+      decoration: BoxDecoration(
+        color: AppTheme.surface,
+        borderRadius: BorderRadius.circular(12),
+        border: Border.all(color: AppTheme.cardBorder),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          const Text('Timeline',
+              style: TextStyle(fontSize: 15, fontWeight: FontWeight.w600)),
+          const SizedBox(height: 8),
+          if (_timeline.isEmpty)
+            const Text('No status history yet',
+                style: TextStyle(fontSize: 13, color: AppTheme.textMuted))
+          else
+            ..._timeline.map((t) => _timelineEntry(t)),
+        ],
+      ),
+    );
+  }
+
+  Widget _timelineEntry(Map<String, dynamic> t) {
+    final from = t['from_status'] as String?;
+    final to = t['to_status'] as String? ?? 'UNKNOWN';
+    final actor = t['changed_by'] as String?;
+    final actorName = actor != null
+        ? (_actorNames[actor] ?? '#${actor.substring(0, 8)}')
+        : null;
+    final note = t['note'] as String?;
+    final when = t['created_at'] != null
+        ? _fmtDate(DateTime.parse(t['created_at'] as String))
+        : '';
+    return Padding(
+      padding: const EdgeInsets.symmetric(vertical: 8),
+      child: Row(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Column(
+            children: [
+              Container(
+                width: 10,
+                height: 10,
+                decoration: BoxDecoration(
+                  shape: BoxShape.circle,
+                  color: orderStatusColor(to),
+                ),
+              ),
+            ],
+          ),
+          const SizedBox(width: 12),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  from == null
+                      ? 'Order created'
+                      : '${_label(from)} → ${_label(to)}',
+                  style: const TextStyle(
+                      fontSize: 13, fontWeight: FontWeight.w600),
+                ),
+                Text(when,
+                    style: const TextStyle(
+                        fontSize: 11, color: AppTheme.textMuted)),
+                if (actorName != null)
+                  Text('by $actorName',
+                      style: const TextStyle(
+                          fontSize: 11, color: AppTheme.textSecondary)),
+                if (note != null && note.isNotEmpty)
+                  Text(note,
+                      style: const TextStyle(
+                          fontSize: 12,
+                          color: AppTheme.textSecondary,
+                          fontStyle: FontStyle.italic)),
+              ],
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  String _fmtDate(DateTime dt) {
+    final l = dt.toLocal();
+    const months = [
+      'Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun',
+      'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec',
+    ];
+    String two(int v) => v.toString().padLeft(2, '0');
+    return '${months[l.month - 1]} ${l.day}, ${l.year} '
+        '${two(l.hour)}:${two(l.minute)}';
+  }
+}

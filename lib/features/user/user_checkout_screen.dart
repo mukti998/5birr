@@ -144,11 +144,13 @@ class _UserCheckoutScreenState extends ConsumerState<UserCheckoutScreen> {
             TextButton(
               onPressed: () {
                 dialogCtx.pop();
-                // Land on the Orders tab of the dashboard (order detail is
-                // a separate future task).
-                context.go('/user?tab=2');
+                if (orderId != null) {
+                  context.go('/user/orders/$orderId');
+                } else {
+                  context.go('/user?tab=2');
+                }
               },
-              child: const Text('VIEW MY ORDERS'),
+              child: const Text('VIEW ORDER'),
             ),
           ],
         ),

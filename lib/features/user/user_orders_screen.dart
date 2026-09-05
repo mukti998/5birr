@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:go_router/go_router.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 import '../../core/theme/app_theme.dart';
 
@@ -65,6 +66,8 @@ class _UserOrdersScreenState extends State<UserOrdersScreen> {
                       final o = _orders[i];
                       return Card(
                         child: ListTile(
+                          onTap: () =>
+                              context.push('/user/orders/${o['id']}'),
                           title: Text(o['status'] ?? '',
                               style: const TextStyle(
                                   fontSize: 14, fontWeight: FontWeight.w600)),

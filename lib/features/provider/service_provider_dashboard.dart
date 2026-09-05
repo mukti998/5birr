@@ -162,9 +162,7 @@ class _ServiceProviderDashboardState
                           const SnackBar(content: Text('Coming soon')),
                         )),
                     _action(Icons.receipt_long_outlined, 'Orders',
-                        () => ScaffoldMessenger.of(context).showSnackBar(
-                          const SnackBar(content: Text('Coming soon')),
-                        )),                    _action(Icons.account_balance_wallet_outlined, 'Wallet',
+                        () => context.go('/provider/orders')),                    _action(Icons.account_balance_wallet_outlined, 'Wallet',
                         () => context.go('/wallet')),
                     _action(Icons.card_membership, 'Subscription',
                         () => ScaffoldMessenger.of(context).showSnackBar(
