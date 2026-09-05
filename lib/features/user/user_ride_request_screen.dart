@@ -1,6 +1,9 @@
 import 'package:flutter/material.dart';
-import 'package:go_router/go_router.dart';
+import 'package:flutter_map/flutter_map.dart';
+import 'package:geocoding/geocoding.dart';
 import 'package:geolocator/geolocator.dart';
+import 'package:go_router/go_router.dart';
+import 'package:latlong2/latlong.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 import '../../core/theme/app_theme.dart';
 import '../../core/widgets/birr_text_field.dart';
@@ -18,7 +21,10 @@ class _State extends State<UserRideRequestScreen> {
   final _pickupCtrl = TextEditingController();
   final _destCtrl = TextEditingController();
   Position? _pickupPos;
-  Position? _destPos;
+  // Destination coordinates come from the map picker — nothing else sets
+  // these, so a ride request cannot be submitted without picking a pin.
+  LatLng? _destLatLng;
+  bool _geocoding = false;
   String? _selectedVehicleCategory;
   List<Map<String, dynamic>> _vehicleCategories = [];
   bool _loading = true;
@@ -57,12 +63,72 @@ class _State extends State<UserRideRequestScreen> {
     }
   }
 
+  /// Initial map center for the picker: current pin, else GPS pickup,
+  /// else a sensible default (Addis Ababa).
+  LatLng _initialMapCenter() {
+    if (_destLatLng != null) return _destLatLng!;
+    if (_pickupPos != null) {
+      return LatLng(_pickupPos!.latitude, _pickupPos!.longitude);
+    }
+    return const LatLng(9.03, 38.74); // Addis Ababa, Ethiopia
+  }
+
+  String _formatCoords(LatLng p) =>
+      '${p.latitude.toStringAsFixed(5)}, ${p.longitude.toStringAsFixed(5)}';
+
+  Future<void> _pickDestinationOnMap() async {
+    final picked = await Navigator.of(context).push<LatLng>(
+      MaterialPageRoute(
+        builder: (_) =>
+            _MapPickerScreen(initialCenter: _initialMapCenter()),
+      ),
+    );
+    if (picked == null || !mounted) return;
+    setState(() {
+      _destLatLng = picked;
+      _error = null;
+    });
+    // Coordinates go in the text field immediately; the reverse-geocoded
+    // address replaces them when (and if) it resolves.
+    _destCtrl.text = _formatCoords(picked);
+    await _reverseGeocode(picked);
+  }
+
+  Future<void> _reverseGeocode(LatLng point) async {
+    setState(() => _geocoding = true);
+    try {
+      final placemarks =
+          await placemarkFromCoordinates(point.latitude, point.longitude);
+      if (!mounted) return;
+      final address =
+          _formatPlacemark(placemarks.isNotEmpty ? placemarks.first : null);
+      setState(() {
+        if (address.isNotEmpty) _destCtrl.text = address;
+        _geocoding = false;
+      });
+    } catch (_) {
+      // Reverse geocoding is best-effort; the coordinate text remains.
+      if (mounted) setState(() => _geocoding = false);
+    }
+  }
+
+  String _formatPlacemark(Placemark? p) {
+    if (p == null) return '';
+    return [
+      p.street,
+      p.subLocality,
+      p.locality,
+      p.administrativeArea,
+      p.country,
+    ].where((s) => s != null && s.trim().isNotEmpty).join(', ');
+  }
+
   Future<void> _submit() async {
     if (_pickupPos == null) {
       setState(() => _error = 'Pickup location is required');
       return;
     }
-    if (_destPos == null) {
+    if (_destLatLng == null) {
       setState(() => _error = 'Destination is required');
       return;
     }
@@ -74,8 +140,8 @@ class _State extends State<UserRideRequestScreen> {
       await RideService.instance.createRideRequest(
         pickupLat: _pickupPos!.latitude,
         pickupLng: _pickupPos!.longitude,
-        destLat: _destPos!.latitude,
-        destLng: _destPos!.longitude,
+        destLat: _destLatLng!.latitude,
+        destLng: _destLatLng!.longitude,
         pickupText: _pickupCtrl.text,
         destText: _destCtrl.text,
         vehicleCategoryId: _selectedVehicleCategory,
@@ -149,10 +215,37 @@ class _State extends State<UserRideRequestScreen> {
                   BirrTextField(
                     label: 'Destination',
                     controller: _destCtrl,
-                    hint: 'Where are you going?',
+                    hint: 'Pick on map, or type an address',
                   ),
-                  // For now, use a simple lat/lng input or placeholder
-                  // In production, this would be a map picker
+                  const SizedBox(height: 4),
+                  Row(
+                    children: [
+                      TextButton.icon(
+                        onPressed: _geocoding ? null : _pickDestinationOnMap,
+                        icon: const Icon(Icons.map_outlined, size: 16),
+                        label: const Text('Pick on map'),
+                      ),
+                      if (_geocoding)
+                        const Padding(
+                          padding: EdgeInsets.only(left: 8),
+                          child: SizedBox(
+                            width: 14,
+                            height: 14,
+                            child: CircularProgressIndicator(
+                                strokeWidth: 2,
+                                color: AppTheme.primaryGreen),
+                          ),
+                        ),
+                    ],
+                  ),
+                  if (_destLatLng != null)
+                    const Padding(
+                      padding: EdgeInsets.only(left: 4),
+                      child: Text(
+                        'Destination coordinates set — tap the map icon to change',
+                        style: TextStyle(fontSize: 12, color: AppTheme.success),
+                      ),
+                    ),
                   const SizedBox(height: 16),
                   // Vehicle category selection
                   const Text('Vehicle Type',
@@ -184,12 +277,140 @@ class _State extends State<UserRideRequestScreen> {
                     child: PrimaryButton(
                       label: 'REQUEST RIDE',
                       isLoading: _submitting,
-                      onPressed: _submit,
+                      // Destination coordinates must be picked before the
+                      // request can be submitted.
+                      onPressed: _destLatLng == null ? null : _submit,
                     ),
                   ),
+                  if (_destLatLng == null)
+                    const Padding(
+                      padding: EdgeInsets.only(top: 8),
+                      child: Text(
+                        'Pick a destination on the map to enable the request',
+                        textAlign: TextAlign.center,
+                        style:
+                            TextStyle(fontSize: 12, color: AppTheme.textMuted),
+                      ),
+                    ),
                 ],
               ),
             ),
+    );
+  }
+}
+
+/// Full-screen OpenStreetMap destination picker.
+/// Drag the map and tap to drop a pin; confirm returns the picked [LatLng].
+class _MapPickerScreen extends StatefulWidget {
+  final LatLng initialCenter;
+  const _MapPickerScreen({super.key, required this.initialCenter});
+
+  @override
+  State<_MapPickerScreen> createState() => _MapPickerScreenState();
+}
+
+class _MapPickerScreenState extends State<_MapPickerScreen> {
+  LatLng? _picked;
+
+  @override
+  Widget build(BuildContext context) {
+    return Scaffold(
+      appBar: AppBar(title: const Text('Pick Destination')),
+      body: Stack(
+        children: [
+          FlutterMap(
+            options: MapOptions(
+              initialCenter: widget.initialCenter,
+              initialZoom: 14,
+              onTap: (_, point) => setState(() => _picked = point),
+            ),
+            children: [
+              TileLayer(
+                urlTemplate: 'https://tile.openstreetmap.org/{z}/{x}/{y}.png',
+                // Android identifies tile requests by the app's package name.
+                // TODO: replace with the real applicationId once the
+                // android/app/build.gradle scaffold exists in this repo.
+                userAgentPackageName: 'com.example.birr5',
+              ),
+              if (_picked != null)
+                MarkerLayer(
+                  markers: [
+                    Marker(
+                      point: _picked!,
+                      width: 44,
+                      height: 44,
+                      alignment: Alignment.topCenter,
+                      child: const Icon(Icons.location_pin,
+                          color: AppTheme.primaryGreen, size: 44),
+                    ),
+                  ],
+                ),
+              // Required by the OpenStreetMap tile usage policy.
+              const RichAttributionWidget(
+                attributions: [
+                  TextSourceAttribution('© OpenStreetMap contributors'),
+                ],
+              ),
+            ],
+          ),
+          if (_picked == null)
+            Positioned(
+              top: 16,
+              left: 16,
+              right: 16,
+              child: Center(
+                child: Container(
+                  padding:
+                      const EdgeInsets.symmetric(horizontal: 14, vertical: 8),
+                  decoration: BoxDecoration(
+                    color: AppTheme.surface,
+                    borderRadius: BorderRadius.circular(20),
+                    boxShadow: [
+                      BoxShadow(
+                        color: Colors.black.withOpacity(0.12),
+                        blurRadius: 10,
+                        offset: const Offset(0, 2),
+                      ),
+                    ],
+                  ),
+                  child: const Text(
+                    'Drag the map, then tap to drop a pin',
+                    style: TextStyle(fontSize: 13, color: AppTheme.textPrimary),
+                  ),
+                ),
+              ),
+            ),
+        ],
+      ),
+      bottomNavigationBar: SafeArea(
+        child: Padding(
+          padding: const EdgeInsets.all(16),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              if (_picked != null)
+                Text(
+                  '${_picked!.latitude.toStringAsFixed(5)}, '
+                  '${_picked!.longitude.toStringAsFixed(5)}',
+                  style: const TextStyle(
+                      fontSize: 13,
+                      fontWeight: FontWeight.w600,
+                      color: AppTheme.textPrimary),
+                ),
+              if (_picked != null) const SizedBox(height: 12),
+              SizedBox(
+                width: double.infinity,
+                child: PrimaryButton(
+                  label: 'CONFIRM DESTINATION',
+                  onPressed: _picked == null
+                      ? null
+                      : () => Navigator.of(context).pop(_picked),
+                ),
+              ),
+            ],
+          ),
+        ),
+      ),
     );
   }
 }
