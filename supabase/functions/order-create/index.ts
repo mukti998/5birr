@@ -1,0 +1,213 @@
+// POST /order-create
+// Body: { provider_id, items: [{ product_id, quantity }], note? }
+//
+// Server-side, price-authoritative order creation.
+//
+// Replaces the client-trusted flow in lib/core/repositories/order_repository.dart
+// (createOrder), which previously sent `totalAmount` and `order_items.unit_price`
+// straight from the Flutter client into the `orders` / `order_items` tables.
+//
+// This function:
+//   1. Authenticates the caller (must be a logged-in USER, not a provider/admin).
+//   2. Accepts only { provider_id, items: [{ product_id, quantity }] } — no prices.
+//   3. Looks up each product's current price, provider ownership, availability,
+//      and stock server-side.
+//   4. Computes the subtotal / total itself.
+//   5. Inserts the order + order_items atomically via a SECURITY DEFINER SQL
+//      function (create_order_secure), so partial writes can't happen.
+//   6. Returns the created order (with server-computed total) to the client.
+//
+// Deploy: supabase functions deploy order-create
+// Requires the SQL function `create_order_secure` (see 0005_secure_order_creation.sql)
+// to be applied as a migration first.
+
+import {
+  corsHeaders,
+  requireUser,
+  getAdminClient,
+  json,
+  sanitizeError,
+} from "../_shared/client.ts";
+
+interface OrderItemInput {
+  product_id: string;
+  quantity: number;
+}
+
+interface OrderCreateBody {
+  provider_id: string;
+  items: OrderItemInput[];
+  note?: string;
+}
+
+const MAX_ITEMS_PER_ORDER = 50;
+const MAX_QUANTITY_PER_ITEM = 999;
+
+Deno.serve(async (req: Request) => {
+  if (req.method === "OPTIONS") {
+    return new Response("ok", { headers: corsHeaders });
+  }
+
+  try {
+    // 1. Authenticate — this throws/returns a 401 Response if invalid.
+    const { user } = await requireUser(req);
+
+    // 2. Parse + validate the request shape. No price fields accepted at all.
+    let body: OrderCreateBody;
+    try {
+      body = await req.json();
+    } catch {
+      return json({ error: "Invalid JSON body" }, 400);
+    }
+
+    if (!body.provider_id || typeof body.provider_id !== "string") {
+      return json({ error: "provider_id is required" }, 400);
+    }
+    if (!Array.isArray(body.items) || body.items.length === 0) {
+      return json({ error: "items must be a non-empty array" }, 400);
+    }
+    if (body.items.length > MAX_ITEMS_PER_ORDER) {
+      return json(
+        { error: `items cannot exceed ${MAX_ITEMS_PER_ORDER}` },
+        400
+      );
+    }
+
+    const cleanedItems: { product_id: string; quantity: number }[] = [];
+    for (const raw of body.items) {
+      if (!raw || typeof raw.product_id !== "string") {
+        return json({ error: "Each item requires a product_id" }, 400);
+      }
+      const qty = Number(raw.quantity);
+      if (!Number.isInteger(qty) || qty <= 0 || qty > MAX_QUANTITY_PER_ITEM) {
+        return json(
+          { error: `Invalid quantity for product ${raw.product_id}` },
+          400
+        );
+      }
+      cleanedItems.push({ product_id: raw.product_id, quantity: qty });
+    }
+
+    // Reject duplicate product_ids — force the client to send one line per product.
+    const seen = new Set<string>();
+    for (const item of cleanedItems) {
+      if (seen.has(item.product_id)) {
+        return json({ error: `Duplicate product_id: ${item.product_id}` }, 400);
+      }
+      seen.add(item.product_id);
+    }
+
+    // 3. Use the service-role client for the authoritative price lookup and
+    // the atomic write — but only AFTER we've verified the caller's identity
+    // above via requireUser(). The user's own id (never client-supplied) is
+    // passed through as the order owner.
+    const admin = getAdminClient();
+
+    const productIds = cleanedItems.map((i) => i.product_id);
+    const { data: products, error: productsError } = await admin
+      .from("products")
+      .select(
+        "id, provider_id, price, currency, is_active, is_available, stock_quantity, listing_status"
+      )
+      .in("id", productIds);
+
+    if (productsError) {
+      console.error("order-create: product lookup failed", productsError);
+      return json({ error: "Failed to validate order items" }, 500);
+    }
+
+    if (!products || products.length !== cleanedItems.length) {
+      return json({ error: "One or more products could not be found" }, 400);
+    }
+
+    const productById = new Map(products.map((p) => [p.id, p]));
+
+    let subtotal = 0;
+    let currency: string | null = null;
+
+    for (const item of cleanedItems) {
+      const product = productById.get(item.product_id)!;
+
+      // All items must belong to the provider the order is being placed with.
+      if (product.provider_id !== body.provider_id) {
+        return json(
+          {
+            error: `Product ${item.product_id} does not belong to provider ${body.provider_id}`,
+          },
+          400
+        );
+      }
+
+      if (!product.is_active || !product.is_available) {
+        return json(
+          { error: `Product ${item.product_id} is not currently available` },
+          409
+        );
+      }
+
+      if (product.listing_status && product.listing_status !== "ACTIVE") {
+        return json(
+          {
+            error: `Product ${item.product_id} is not active (${product.listing_status})`,
+          },
+          409
+        );
+      }
+
+      if (
+        product.stock_quantity !== null &&
+        product.stock_quantity !== undefined &&
+        product.stock_quantity < item.quantity
+      ) {
+        return json(
+          { error: `Insufficient stock for product ${item.product_id}` },
+          409
+        );
+      }
+
+      if (currency === null) {
+        currency = product.currency ?? "ETB";
+      } else if (product.currency && product.currency !== currency) {
+        return json(
+          { error: "All items in one order must use the same currency" },
+          400
+        );
+      }
+
+      // Server-authoritative price — client-supplied prices are never read.
+      subtotal += Number(product.price) * item.quantity;
+    }
+
+    const total = Math.round(subtotal * 100) / 100; // round to cents/kobo-equivalent
+
+    // 4. Atomic write via SECURITY DEFINER SQL function.
+    const itemsPayload = cleanedItems.map((item) => ({
+      product_id: item.product_id,
+      quantity: item.quantity,
+      unit_price: productById.get(item.product_id)!.price, // server value
+    }));
+
+    const { data: created, error: rpcError } = await admin.rpc(
+      "create_order_secure",
+      {
+        p_user_id: user.id,
+        p_provider_id: body.provider_id,
+        p_items: itemsPayload,
+        p_total_amount: total,
+        p_currency: currency,
+        p_note: body.note ?? null,
+      }
+    );
+
+    if (rpcError) {
+      console.error("order-create: create_order_secure failed", rpcError);
+      return json({ error: sanitizeError(rpcError.message) }, 400);
+    }
+
+    return json({ order: created }, 201);
+  } catch (e) {
+    if (e instanceof Response) return e;
+    console.error("order-create: unhandled error", e);
+    return json({ error: "An internal error occurred" }, 500);
+  }
+});

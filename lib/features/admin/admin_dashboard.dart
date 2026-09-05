@@ -143,7 +143,10 @@ class _AdminDashboardState extends ConsumerState<AdminDashboard> {
                     const SizedBox(height: 12),
                     _action(Icons.payment, 'Payment Verification',
                         () => context.go('/admin/payments')),
-                    _action(Icons.money, 'Cash Recharge', null),
+                    _action(Icons.money, 'Cash Recharge',
+                        () => ScaffoldMessenger.of(context).showSnackBar(
+                          const SnackBar(content: Text('Coming soon')),
+                        )),
                     _action(Icons.account_balance_wallet_outlined, 'Payment Methods',
                         () => context.go('/admin/payment-methods')),
                     const SizedBox(height: 20),
@@ -151,9 +154,18 @@ class _AdminDashboardState extends ConsumerState<AdminDashboard> {
                     const Text('System',
                         style: TextStyle(fontSize: 16, fontWeight: FontWeight.w700)),
                     const SizedBox(height: 12),
-                    _action(Icons.people_outline, 'Users', null),
-                    _action(Icons.category_outlined, 'Categories', null),
-                    _action(Icons.analytics_outlined, 'Analytics', null),
+                    _action(Icons.people_outline, 'Users',
+                        () => ScaffoldMessenger.of(context).showSnackBar(
+                          const SnackBar(content: Text('Coming soon')),
+                        )),
+                    _action(Icons.category_outlined, 'Categories',
+                        () => ScaffoldMessenger.of(context).showSnackBar(
+                          const SnackBar(content: Text('Coming soon')),
+                        )),
+                    _action(Icons.analytics_outlined, 'Analytics',
+                        () => ScaffoldMessenger.of(context).showSnackBar(
+                          const SnackBar(content: Text('Coming soon')),
+                        )),
                   ],
                 ),
               ),

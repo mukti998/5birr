@@ -132,7 +132,9 @@ class _VehicleProviderDashboardState
         actions: [
           IconButton(
               icon: const Icon(Icons.notifications_outlined),
-              onPressed: () {}),
+              onPressed: () => ScaffoldMessenger.of(context).showSnackBar(
+                const SnackBar(content: Text('Coming soon')),
+              )),
           IconButton(
               icon: const Icon(Icons.logout),
               onPressed: () => ref.read(authProvider.notifier).signOut()),
@@ -255,7 +257,10 @@ class _VehicleProviderDashboardState
                         () => context.go('/vehicle/vehicles/new')),
                     _action(Icons.account_balance_wallet_outlined, 'Wallet',
                         () => context.go('/wallet')),
-                    _action(Icons.person_outline, 'Profile', null),
+                    _action(Icons.person_outline, 'Profile',
+                        () => ScaffoldMessenger.of(context).showSnackBar(
+                          const SnackBar(content: Text('Coming soon')),
+                        )),
                   ],
                 ),
               ),

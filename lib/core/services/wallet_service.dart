@@ -87,9 +87,17 @@ class WalletService {
   Future<List<Map<String, dynamic>>> getMyRechargeRequests() async {
     final userId = _client.auth.currentUser?.id;
     if (userId == null) return [];
+    final prov = await _client
+        .from('provider_profiles')
+        .select('id')
+        .eq('user_id', userId)
+        .maybeSingle();
+    if (prov == null) return [];
+    final providerId = prov['id'] as String;
     final data = await _client
         .from('wallet_recharge_requests')
         .select('*, payment_methods(name)')
+        .eq('provider_id', providerId)
         .order('created_at', ascending: false);
     return List<Map<String, dynamic>>.from(data as List);
   }

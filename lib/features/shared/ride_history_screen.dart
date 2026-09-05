@@ -4,8 +4,8 @@ import '../../core/theme/app_theme.dart';
 import '../../core/services/ride_service.dart';
 
 class RideHistoryScreen extends StatefulWidget {
-  final bool isDriver;
-  const RideHistoryScreen({super.key, this.isDriver = false});
+  final bool isProvider;
+  const RideHistoryScreen({super.key, this.isProvider = false});
   @override
   State<RideHistoryScreen> createState() => _State();
 }
@@ -22,7 +22,7 @@ class _State extends State<RideHistoryScreen> {
 
   Future<void> _load() async {
     try {
-      final rides = widget.isDriver
+      final rides = widget.isProvider
           ? await RideService.instance.getDriverRideHistory()
           : await RideService.instance.getUserRideHistory();
       if (mounted) {
@@ -40,7 +40,7 @@ class _State extends State<RideHistoryScreen> {
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(
-          title: Text(widget.isDriver ? 'Ride History' : 'My Rides')),
+          title: Text(widget.isProvider ? 'Ride History' : 'My Rides')),
       body: _loading
           ? const Center(
               child: CircularProgressIndicator(color: AppTheme.primaryGreen))

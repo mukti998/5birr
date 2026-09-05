@@ -67,11 +67,12 @@ class _ServiceProviderDashboardState
     final auth = ref.watch(authProvider);
     return Scaffold(
       appBar: AppBar(
-        title: const Text('5BIRR Business'),
-        actions: [
+        title: const Text('5BIRR Business'),          actions: [
           IconButton(
               icon: const Icon(Icons.notifications_outlined),
-              onPressed: () {}),
+              onPressed: () => ScaffoldMessenger.of(context).showSnackBar(
+                const SnackBar(content: Text('Coming soon')),
+              )),
           IconButton(
               icon: const Icon(Icons.logout),
               onPressed: () =>
@@ -156,11 +157,23 @@ class _ServiceProviderDashboardState
                         () => context.go('/provider/products')),
                     _action(Icons.add_circle_outline, 'Add Product',
                         () => context.go('/provider/products/new')),
-                    _action(Icons.photo_library_outlined, 'Gallery', null),
-                    _action(Icons.receipt_long_outlined, 'Orders', null),                    _action(Icons.account_balance_wallet_outlined, 'Wallet',
+                    _action(Icons.photo_library_outlined, 'Gallery',
+                        () => ScaffoldMessenger.of(context).showSnackBar(
+                          const SnackBar(content: Text('Coming soon')),
+                        )),
+                    _action(Icons.receipt_long_outlined, 'Orders',
+                        () => ScaffoldMessenger.of(context).showSnackBar(
+                          const SnackBar(content: Text('Coming soon')),
+                        )),                    _action(Icons.account_balance_wallet_outlined, 'Wallet',
                         () => context.go('/wallet')),
-                    _action(Icons.card_membership, 'Subscription', null),
-                    _action(Icons.person_outline, 'Profile', null),
+                    _action(Icons.card_membership, 'Subscription',
+                        () => ScaffoldMessenger.of(context).showSnackBar(
+                          const SnackBar(content: Text('Coming soon')),
+                        )),
+                    _action(Icons.person_outline, 'Profile',
+                        () => ScaffoldMessenger.of(context).showSnackBar(
+                          const SnackBar(content: Text('Coming soon')),
+                        )),
                   ],
                 ),
               ),

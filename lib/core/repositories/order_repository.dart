@@ -30,34 +30,23 @@ class OrderRepository {
     return (data as List).map((j) => AppOrder.fromJson(j)).toList();
   }
 
-  /// Create a new order.
+  /// Create a new order via server-side Edge Function.
+  /// The Edge Function validates prices, availability, and stock server-side,
+  /// ensuring the client cannot manipulate pricing.
   Future<AppOrder> createOrder({
     required String providerId,
-    required double totalAmount,
-    List<Map<String, dynamic>>? items,
+    required List<Map<String, dynamic>> items,
+    String? note,
   }) async {
-    final orderData = await _svc.client
-        .from('orders')
-        .insert({
-          'provider_id': providerId,
-          'total_amount': totalAmount,
-          'status': 'CREATED',
-        })
-        .select()
-        .single();
-
-    if (items != null) {
-      for (final item in items) {
-        await _svc.client.from('order_items').insert({
-          'order_id': orderData['id'],
-          'product_id': item['product_id'],
-          'quantity': item['quantity'],
-          'unit_price': item['unit_price'],
-        });
-      }
-    }
-
-    return AppOrder.fromJson(orderData);
+    final result = await _svc.invokeFunction('order-create', body: {
+      'provider_id': providerId,
+      'items': items.map((item) => {
+        'product_id': item['product_id'],
+        'quantity': item['quantity'],
+      }).toList(),
+      if (note != null) 'note': note,
+    });
+    return AppOrder.fromJson(result['order'] as Map<String, dynamic>);
   }
 
   /// Transition order status via Edge Function.

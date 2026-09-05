@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
+import 'package:cached_network_image/cached_network_image.dart';
 import '../../core/theme/app_theme.dart';
 import '../../core/services/favorites_service.dart';
 
@@ -84,12 +85,36 @@ class _State extends State<UserProductDetailScreen> {
                 height: 250,
                 child: PageView.builder(
                   itemCount: imgs.length,
-                  itemBuilder: (_, i) => Container(
-                    color: AppTheme.creamDark,
-                    child: const Center(
-                        child: Icon(Icons.image_outlined,
-                            size: 64, color: AppTheme.textMuted)),
-                  ),
+                  itemBuilder: (_, i) {
+                    final storagePath = imgs[i]['storage_path'] as String?;
+                    final imageUrl = storagePath != null
+                        ? Supabase.instance.client.storage
+                            .from('product-images')
+                            .getPublicUrl(storagePath)
+                        : null;
+                    return imageUrl != null
+                        ? CachedNetworkImage(
+                            imageUrl: imageUrl,
+                            fit: BoxFit.cover,
+                            placeholder: (_, __) => const Center(
+                              child: CircularProgressIndicator(
+                                  color: AppTheme.primaryGreen)),
+                            errorWidget: (_, __, ___) => Container(
+                              color: AppTheme.creamDark,
+                              child: const Center(
+                                child: Icon(Icons.image_outlined,
+                                    size: 64, color: AppTheme.textMuted),
+                              ),
+                            ),
+                          )
+                        : Container(
+                            color: AppTheme.creamDark,
+                            child: const Center(
+                              child: Icon(Icons.image_outlined,
+                                  size: 64, color: AppTheme.textMuted),
+                            ),
+                          );
+                  },
                 ),
               )
             else

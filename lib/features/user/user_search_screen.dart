@@ -1,3 +1,4 @@
+import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
@@ -15,6 +16,22 @@ class _UserSearchScreenState extends State<UserSearchScreen> {
   List<Map<String, dynamic>> _results = [];
   bool _loading = false;
   bool _searched = false;
+  Timer? _debounce;
+
+  String _escapeIlike(String input) =>
+      input.replaceAll('\\', '\\\\').replaceAll('%', '\\%').replaceAll('_', '\\_');
+
+  void _onQueryChanged(String value) {
+    _debounce?.cancel();
+    _debounce = Timer(const Duration(milliseconds: 300), () => _search(value));
+  }
+
+  @override
+  void dispose() {
+    _debounce?.cancel();
+    _ctrl.dispose();
+    super.dispose();
+  }
 
   Future<void> _search(String q) async {
     if (q.trim().isEmpty) return;
@@ -23,11 +40,12 @@ class _UserSearchScreenState extends State<UserSearchScreen> {
       _searched = true;
     });
     try {
+      final safe = _escapeIlike(q);
       final data = await Supabase.instance.client
           .from('products')
           .select('*, product_images(*), provider_profiles(business_name)')
           .eq('is_active', true)
-          .or('name.ilike.%$q%,description.ilike.%$q%')
+          .or('name.ilike.%$safe%,description.ilike.%$safe%')
           .order('created_at', ascending: false)
           .limit(30);
       if (mounted) {
@@ -51,6 +69,7 @@ class _UserSearchScreenState extends State<UserSearchScreen> {
           child: TextField(
             controller: _ctrl,
             onSubmitted: _search,
+            onChanged: _onQueryChanged,
             style: const TextStyle(color: Colors.white),
             decoration: InputDecoration(
               hintText: 'Search products, services...',

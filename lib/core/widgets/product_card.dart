@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:cached_network_image/cached_network_image.dart';
+import 'package:supabase_flutter/supabase_flutter.dart';
 import '../theme/app_theme.dart';
 import '../models/product.dart';
 
@@ -19,7 +20,9 @@ class ProductCard extends StatelessWidget {
   Widget build(BuildContext context) {
     final img = imageUrl ??
         (product.images.isNotEmpty
-            ? 'https://placeholder'
+            ? Supabase.instance.client.storage
+                .from('product-images')
+                .getPublicUrl(product.images.first.storagePath)
             : null);
 
     return GestureDetector(
