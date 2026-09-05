@@ -8,3 +8,5 @@ export 'product.dart';
 export 'order.dart';
 export 'ride_request.dart';
 export 'category.dart';
+export 'provider_store.dart';
+export 'provider_gallery.dart';
