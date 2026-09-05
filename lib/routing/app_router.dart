@@ -15,6 +15,7 @@ import '../features/user/user_favorites_screen.dart';
 import '../features/user/user_cart_screen.dart';
 import '../features/user/user_checkout_screen.dart';
 import '../features/user/user_order_detail_screen.dart';
+import '../features/user/review_form_screen.dart';
 import '../features/provider/service_provider_dashboard.dart';
 import '../features/provider/provider_orders_screen.dart';
 import '../features/provider/provider_business_profile_screen.dart';
@@ -106,6 +107,17 @@ final appRouterProvider = Provider<GoRouter>((ref) {
       GoRoute(path: '/user/cart', builder: (_, __) => const UserCartScreen()),
       GoRoute(path: '/user/checkout', builder: (_, s) => UserCheckoutScreen(providerId: s.extra as String)),
       GoRoute(path: '/user/orders/:id', builder: (_, s) => UserOrderDetailScreen(orderId: s.pathParameters['id']!, viewerRole: s.extra as String? ?? 'user')),
+      GoRoute(
+        path: '/review/new',
+        builder: (_, s) {
+          final args = (s.extra as Map?) ?? const {};
+          return ReviewFormScreen(
+            orderId: args['orderId'] as String?,
+            productId: args['productId'] as String?,
+            providerId: args['providerId'] as String?,
+          );
+        },
+      ),
       GoRoute(path: '/user/search', builder: (_, __) => const UserSearchScreen()),
       GoRoute(path: '/user/ride-request', builder: (_, __) => const UserRideRequestScreen()),
       GoRoute(path: '/user/ride-active', builder: (_, __) => const UserActiveRideScreen()),

@@ -5,6 +5,7 @@ import 'package:cached_network_image/cached_network_image.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 import '../../core/theme/app_theme.dart';
 import '../../core/widgets/primary_button.dart';
+import '../../core/services/review_service.dart';
 
 /// Statuses from which CANCELLED is a legal transition
 /// (see transition_order_status whitelist in 0003_functions.sql).
@@ -60,6 +61,7 @@ class _UserOrderDetailScreenState
   List<Map<String, dynamic>> _timeline = [];
   Map<String, String> _actorNames = {};
   String? _proofUrl;
+  bool _reviewed = false;
   bool _loading = true;
   bool _acting = false;
   String? _error;
@@ -118,12 +120,20 @@ class _UserOrderDetailScreenState
             .createSignedUrl(proof['storage_path'] as String, 3600);
       }
 
+      // Whether the current user already reviewed this order (best-effort).
+      var reviewed = false;
+      try {
+        reviewed = await ReviewService.instance
+            .hasUserReviewedOrder(widget.orderId);
+      } catch (_) {}
+
       if (mounted) {
         setState(() {
           _order = order;
           _timeline = List<Map<String, dynamic>>.from(timeline as List);
           _actorNames = names;
           _proofUrl = proofUrl;
+          _reviewed = reviewed;
           _loading = false;
           _error = null;
         });
@@ -236,6 +246,13 @@ class _UserOrderDetailScreenState
 
   String _label(String status) => status.replaceAll('_', ' ');
 
+  /// First product id in the order, used to target a product review.
+  String? get _firstProductId {
+    final items = (_order?['order_items'] as List?) ?? const [];
+    if (items.isEmpty) return null;
+    return (items.first as Map<String, dynamic>)['product_id'] as String?;
+  }
+
   @override
   Widget build(BuildContext context) {
     return Scaffold(
@@ -310,6 +327,29 @@ class _UserOrderDetailScreenState
                               label: const Text('CANCEL ORDER'),
                               style: OutlinedButton.styleFrom(
                                   foregroundColor: AppTheme.error),
+                            ),
+                          ),
+                        if (!_isProvider &&
+                            (_order?['status'] as String?) == 'COMPLETED')
+                          Padding(
+                            padding: const EdgeInsets.only(top: 8),
+                            child: SizedBox(
+                              width: double.infinity,
+                              child: PrimaryButton(
+                                label: _reviewed
+                                    ? 'EDIT YOUR REVIEW'
+                                    : 'LEAVE A REVIEW',
+                                icon: Icons.rate_review_outlined,
+                                isOutlined: true,
+                                onPressed: () async {
+                                  await context.push('/review/new', extra: {
+                                    'orderId': widget.orderId,
+                                    'productId': _firstProductId,
+                                    'providerId': _order?['provider_id'],
+                                  });
+                                  if (mounted) _load();
+                                },
+                              ),
                             ),
                           ),
                         const SizedBox(height: 24),

@@ -6,6 +6,7 @@ import 'package:cached_network_image/cached_network_image.dart';
 import '../../core/theme/app_theme.dart';
 import '../../core/services/favorites_service.dart';
 import '../../core/services/cart_service.dart';
+import '../../core/services/review_service.dart';
 
 class UserProductDetailScreen extends ConsumerStatefulWidget {
   final String productId;
@@ -16,6 +17,7 @@ class UserProductDetailScreen extends ConsumerStatefulWidget {
 
 class _State extends ConsumerState<UserProductDetailScreen> {
   Map<String, dynamic>? _product;
+  List<Map<String, dynamic>> _reviews = [];
   bool _loading = true;
   bool _fav = false;
   bool _adding = false;
@@ -35,10 +37,16 @@ class _State extends ConsumerState<UserProductDetailScreen> {
           .single();
       final fav = await FavoritesService.instance
           .isFavorited('PRODUCT', widget.productId);
+      List<Map<String, dynamic>> reviews = [];
+      try {
+        reviews = await ReviewService.instance
+            .getReviewsForProduct(widget.productId);
+      } catch (_) {}
       if (mounted) {
         setState(() {
           _product = data;
           _fav = fav;
+          _reviews = reviews;
           _loading = false;
         });
       }
@@ -188,6 +196,8 @@ class _State extends ConsumerState<UserProductDetailScreen> {
                             color: AppTheme.textSecondary,
                             height: 1.5)),
                   ],
+                  const SizedBox(height: 24),
+                  _reviewsSection(),
                 ],
               ),
             ),
@@ -216,6 +226,82 @@ class _State extends ConsumerState<UserProductDetailScreen> {
         ),
       ),
     );
+  }
+
+  Widget _reviewsSection() {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        const Text('Reviews',
+            style:
+                TextStyle(fontSize: 16, fontWeight: FontWeight.w700)),
+        const SizedBox(height: 12),
+        if (_reviews.isEmpty)
+          const Text('No reviews yet',
+              style: TextStyle(color: AppTheme.textMuted))
+        else
+          ..._reviews.map((r) => _reviewTile(r)),
+      ],
+    );
+  }
+
+  Widget _reviewTile(Map<String, dynamic> r) {
+    final rating = (r['rating'] as num).toInt();
+    final when = r['created_at'] != null
+        ? _fmtDate(DateTime.parse(r['created_at'] as String))
+        : '';
+    return Padding(
+      padding: const EdgeInsets.only(bottom: 14),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            children: [
+              Expanded(
+                child: Text(r['reviewer_name'] ?? 'Anonymous',
+                    style: const TextStyle(
+                        fontSize: 13, fontWeight: FontWeight.w600)),
+              ),
+              _stars(rating),
+            ],
+          ),
+          if (when.isNotEmpty)
+            Text(when,
+                style: const TextStyle(
+                    fontSize: 11, color: AppTheme.textMuted)),
+          if (r['comment'] != null && (r['comment'] as String).isNotEmpty) ...[
+            const SizedBox(height: 4),
+            Text(r['comment'] as String,
+                style: const TextStyle(
+                    fontSize: 13,
+                    color: AppTheme.textSecondary,
+                    height: 1.4)),
+          ],
+        ],
+      ),
+    );
+  }
+
+  Widget _stars(int rating) {
+    return Row(
+      mainAxisSize: MainAxisSize.min,
+      children: List.generate(5, (i) => Icon(
+            i < rating ? Icons.star : Icons.star_border,
+            size: 14,
+            color: AppTheme.gold,
+          )),
+    );
+  }
+
+  String _fmtDate(DateTime dt) {
+    final l = dt.toLocal();
+    const months = [
+      'Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun',
+      'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec',
+    ];
+    String two(int v) => v.toString().padLeft(2, '0');
+    return '${months[l.month - 1]} ${l.day}, ${l.year} '
+        '${two(l.hour)}:${two(l.minute)}';
   }
 
   Future<void> _addToCart() async {
