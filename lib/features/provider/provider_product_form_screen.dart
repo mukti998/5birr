@@ -58,8 +58,21 @@ class _State extends State<ProviderProductFormScreen> {
           .select('id,name')
           .eq('sector', 'SERVICE')
           .eq('is_active', true)
+          .is_('parent_id', null)
           .order('name');
-      _categories = List<Map<String, dynamic>>.from(cats as List);
+      var categories = List<Map<String, dynamic>>.from(cats as List);
+      // Fallback: if no parent categories exist, show all categories
+      // for this sector so the dropdown is never empty.
+      if (categories.isEmpty) {
+        final allCats = await client
+            .from('categories')
+            .select('id,name')
+            .eq('sector', 'SERVICE')
+            .eq('is_active', true)
+            .order('name');
+        categories = List<Map<String, dynamic>>.from(allCats as List);
+      }
+      _categories = categories;
 
       if (_isEdit) {
         final prod = await client

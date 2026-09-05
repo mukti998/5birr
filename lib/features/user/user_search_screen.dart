@@ -68,7 +68,7 @@ class _UserSearchScreenState extends State<UserSearchScreen> {
           color: AppTheme.primaryGreen,
           child: TextField(
             controller: _ctrl,
-            onSubmitted: _search,
+            onSubmitted: _onQueryChanged,
             onChanged: _onQueryChanged,
             style: const TextStyle(color: Colors.white),
             decoration: InputDecoration(
