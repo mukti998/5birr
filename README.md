@@ -12,32 +12,31 @@ provider approval workflow, and the Flutter/Supabase project skeleton.
 ## File tree
 
 ```
-5birr/
-  supabase/
-    migrations/
-      0001_core_schema.sql      # tables, enums, indexes, PostGIS
-      0002_rls_policies.sql     # row level security, has_role()/is_admin()
-      0003_functions.sql        # claim_ride, fee deduction, order FSM, approvals
-      0004_seed.sql              # categories seed + admin bootstrap notes
-    functions/                   # Edge Functions (Deno)
-      _shared/client.ts
-      ride-claim/index.ts
-      wallet-deduct-fee/index.ts
-      provider-approval/index.ts
-      order-transition/index.ts
-      subscription-process/index.ts
-    tests/
-      ride_claim_race_test.sql   # concurrency + idempotency test harness
-  lib/                            # Flutter app skeleton
-    core/config/env.dart
-    core/services/supabase_service.dart
-    features/auth/admin_gate.dart
-    features/vehicle/ride_repository.dart
-    features/{user,provider,vehicle,admin}/   # placeholders for Phase 2
-  n8n/README.md                  # workflow specs
-  pubspec.yaml
-  .env.example
-  .gitignore
+supabase/
+  migrations/
+    0001_core_schema.sql      # tables, enums, indexes, PostGIS
+    0002_rls_policies.sql     # row level security, has_role()/is_admin()
+    0003_functions.sql        # claim_ride, fee deduction, order FSM, approvals
+    0004_seed.sql              # categories seed + admin bootstrap notes
+  functions/                   # Edge Functions (Deno)
+    _shared/client.ts
+    ride-claim/index.ts
+    wallet-deduct-fee/index.ts
+    provider-approval/index.ts
+    order-transition/index.ts
+    subscription-process/index.ts
+  tests/
+    ride_claim_race_test.sql   # concurrency + idempotency test harness
+lib/                            # Flutter app skeleton
+  core/config/env.dart
+  core/services/supabase_service.dart
+  features/auth/admin_gate.dart
+  features/vehicle/ride_repository.dart
+  features/{user,provider,vehicle,admin}/   # placeholders for Phase 2
+n8n/README.md                  # workflow specs
+pubspec.yaml
+.env.example
+.gitignore
 ```
 
 ## Setup
