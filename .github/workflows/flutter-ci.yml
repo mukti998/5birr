@@ -22,12 +22,12 @@ jobs:
 
       - name: Commit pubspec.lock if changed
         run: |
-          if [ ! -f pubspec.lock ] || ! git diff --quiet pubspec.lock; then
+          if [ -z "$(git status --porcelain pubspec.lock)" ]; then
+            echo "pubspec.lock unchanged — skipping commit."
+          else
             git config user.name "github-actions[bot]"
             git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
             git add pubspec.lock
             git commit -m "ci: auto-generate pubspec.lock"
             git push
-          else
-            echo "pubspec.lock unchanged — skipping commit."
           fi
