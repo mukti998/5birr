@@ -1,5 +1,6 @@
 import '../models/models.dart';
 import '../services/supabase_service.dart';
+import 'package:postgrest/postgrest.dart' show CountOption;
 
 class CategoryRepository {
   final _svc = SupabaseService.instance;

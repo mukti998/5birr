@@ -1,5 +1,6 @@
 import '../models/models.dart';
 import '../services/supabase_service.dart';
+import 'package:storage_client/storage_client.dart' show FileOptions;
 
 /// Repository for product-related database operations.
 class ProductRepository {
@@ -27,7 +28,7 @@ class ProductRepository {
 
     return (data as List).map((json) {
       final images = (json['product_images'] as List?)
-              ?.map((i) => ProductImage.fromJson(i))
+              ?.map((i) => ListingImage.fromJson(i))
               .toList() ??
           [];
       return Product(

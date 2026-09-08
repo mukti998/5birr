@@ -1,5 +1,6 @@
 import '../models/models.dart';
 import '../services/supabase_service.dart';
+import 'package:postgrest/postgrest.dart' show CountOption;
 
 /// Repository for admin-only database operations.
 class AdminRepository {

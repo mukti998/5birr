@@ -1,4 +1,5 @@
 import 'package:supabase_flutter/supabase_flutter.dart';
+import 'package:storage_client/storage_client.dart' show FileOptions;
 
 class ImageService {
   ImageService._();
