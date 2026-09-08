@@ -4,6 +4,9 @@ on:
   push:
     branches: [main]
 
+permissions:
+  contents: write
+
 jobs:
   flutter-pub-get:
     runs-on: ubuntu-latest
