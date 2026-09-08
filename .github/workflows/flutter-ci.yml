@@ -1,0 +1,33 @@
+name: Flutter CI
+
+on:
+  push:
+    branches: [main]
+
+jobs:
+  flutter-pub-get:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: subosito/flutter-action@v2
+        with:
+          channel: stable
+
+      - name: Install dependencies
+        run: flutter pub get
+
+      - name: Analyze (non-blocking)
+        run: flutter analyze || true
+
+      - name: Commit pubspec.lock if changed
+        run: |
+          if [ ! -f pubspec.lock ] || ! git diff --quiet pubspec.lock; then
+            git config user.name "github-actions[bot]"
+            git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+            git add pubspec.lock
+            git commit -m "ci: auto-generate pubspec.lock"
+            git push
+          else
+            echo "pubspec.lock unchanged — skipping commit."
+          fi
