@@ -17,6 +17,21 @@ jobs:
         with:
           channel: stable
 
+      - name: Scaffold missing platform directories
+        run: flutter create --platforms=android,ios .
+
+      - name: Commit platform scaffolding if generated
+        run: |
+          if [ -z "$(git status --porcelain android/ ios/)" ]; then
+            echo "No new platform files — skipping commit."
+          else
+            git config user.name "github-actions[bot]"
+            git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+            git add android/ ios/
+            git commit -m "chore: scaffold missing android/ios platform directories via flutter create"
+            git push
+          fi
+
       - name: Install dependencies
         run: flutter pub get
 
