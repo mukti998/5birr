@@ -13,7 +13,7 @@ class AppCategory {
   final bool isActive;
   final int sortOrder;
   final DateTime createdAt;
-  final DateTime updatedAt;
+  final DateTime? updatedAt;
   final List<AppCategory> subcategories;
 
   const AppCategory({

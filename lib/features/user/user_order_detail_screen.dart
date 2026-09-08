@@ -101,7 +101,7 @@ class _UserOrderDetailScreenState
           final profiles = await client
               .from('profiles')
               .select('id, full_name')
-              .in_('id', actorIds);
+              .inFilter('id', actorIds);
           for (final p in profiles as List) {
             names[p['id'] as String] = p['full_name'] as String? ?? '';
           }

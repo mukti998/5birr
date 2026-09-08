@@ -78,7 +78,7 @@ class RideService {
         .from('ride_requests')
         .select('*, driver_status!current_ride_id(provider_id, current_location)')
         .eq('user_id', userId)
-        .in_('status', ['REQUESTED', 'CLAIMED', 'DRIVER_ARRIVING', 'ARRIVED', 'TRIP_STARTED'])
+        .inFilter('status', ['REQUESTED', 'CLAIMED', 'DRIVER_ARRIVING', 'ARRIVED', 'TRIP_STARTED'])
         .order('created_at', ascending: false)
         .maybeSingle();
     return data;
@@ -99,7 +99,7 @@ class RideService {
         .from('ride_requests')
         .select('*, profiles!ride_requests_user_id_fkey(full_name, phone)')
         .eq('claimed_by_provider_id', prov['id'])
-        .in_('status', ['CLAIMED', 'DRIVER_ARRIVING', 'ARRIVED', 'TRIP_STARTED'])
+        .inFilter('status', ['CLAIMED', 'DRIVER_ARRIVING', 'ARRIVED', 'TRIP_STARTED'])
         .order('created_at', ascending: false)
         .maybeSingle();
     return data;

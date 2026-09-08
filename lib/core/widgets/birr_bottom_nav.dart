@@ -34,13 +34,13 @@ class BirrBottomNav extends ConsumerWidget {
           child: Row(
             mainAxisAlignment: MainAxisAlignment.spaceAround,
             children: [
-              _item(0, Icons.home_outlined, Icons.home, 'Home'),
-              _item(1, Icons.search_outlined, Icons.search, 'Search'),
-              _item(2, Icons.receipt_long_outlined, Icons.receipt_long,
+              _item(context, 0, Icons.home_outlined, Icons.home, 'Home'),
+              _item(context, 1, Icons.search_outlined, Icons.search, 'Search'),
+              _item(context, 2, Icons.receipt_long_outlined, Icons.receipt_long,
                   'Orders', cartBadge: cartCount),
-              _item(3, Icons.notifications_outlined, Icons.notifications,
+              _item(context, 3, Icons.notifications_outlined, Icons.notifications,
                   'Alerts'),
-              _item(4, Icons.person_outlined, Icons.person, 'Profile'),
+              _item(context, 4, Icons.person_outlined, Icons.person, 'Profile'),
             ],
           ),
         ),
@@ -49,6 +49,7 @@ class BirrBottomNav extends ConsumerWidget {
   }
 
   Widget _item(
+    BuildContext context,
     int index,
     IconData outline,
     IconData filled,

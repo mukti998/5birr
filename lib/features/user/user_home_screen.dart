@@ -32,7 +32,7 @@ class _UserHomeScreenState extends State<UserHomeScreen> {
           .select()
           .eq('sector', 'SERVICE')
           .eq('is_active', true)
-          .is_('parent_id', null)
+          .isFilter('parent_id', null)
           .order('sort_order')
           .limit(12);
       final prodData = await client

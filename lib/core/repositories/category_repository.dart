@@ -11,7 +11,7 @@ class CategoryRepository {
         .select()
         .eq('sector', sector)
         .eq('is_active', true)
-        .is_('parent_id', null)
+        .isFilter('parent_id', null)
         .order('sort_order');
     return (data as List).map((j) => AppCategory.fromJson(j)).toList();
   }
@@ -65,7 +65,7 @@ class CategoryRepository {
   Future<int> countProducts(String categoryId) async {
     final data = await _svc.client
         .from('products')
-        .select('id', const FetchOptions(count: CountOption.exact))
+        .select('id', count: CountOption.exact)
         .eq('category_id', categoryId)
         .eq('is_active', true);
     return data.count ?? 0;

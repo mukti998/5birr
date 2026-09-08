@@ -101,7 +101,7 @@ class ReviewService {
         final profiles = await _client
             .from('profiles')
             .select('id, full_name')
-            .in_('id', userIds);
+            .inFilter('id', userIds);
         for (final p in profiles as List) {
           names[p['id'] as String] = p['full_name'] as String? ?? '';
         }

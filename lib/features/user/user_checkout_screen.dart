@@ -113,7 +113,7 @@ class _UserCheckoutScreenState extends ConsumerState<UserCheckoutScreen> {
           final path = '$userId/$orderId/$fileName';
           await client.storage
               .from('payment-proofs')
-              .upload(path, _screenshot!.path,
+              .upload(path, _screenshot!,
                   fileOptions: const FileOptions(upsert: true));
           await client.from('payment_proofs').insert({
             'order_id': orderId,

@@ -43,7 +43,7 @@ class _State extends State<ProviderBusinessProfileScreen> {
           .from('categories')
           .select('id,name')
           .eq('sector', 'SERVICE')
-          .is_('parent_id', null)
+          .isFilter('parent_id', null)
           .eq('is_active', true)
           .order('name');
       if (mounted) {

@@ -58,7 +58,7 @@ class _State extends State<ProviderProductFormScreen> {
           .select('id,name')
           .eq('sector', 'SERVICE')
           .eq('is_active', true)
-          .is_('parent_id', null)
+          .isFilter('parent_id', null)
           .order('name');
       var categories = List<Map<String, dynamic>>.from(cats as List);
       // Fallback: if no parent categories exist, show all categories

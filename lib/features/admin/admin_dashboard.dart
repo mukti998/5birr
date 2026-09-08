@@ -30,21 +30,21 @@ class _AdminDashboardState extends ConsumerState<AdminDashboard> {
       final client = Supabase.instance.client;
       final pending = await client
           .from('provider_profiles')
-          .select('id', const FetchOptions(count: CountOption.exact))
+          .select('id', count: CountOption.exact)
           .eq('status', 'PENDING_APPROVAL');
       final recharges = await client
           .from('wallet_recharge_requests')
-          .select('id', const FetchOptions(count: CountOption.exact))
+          .select('id', count: CountOption.exact)
           .eq('status', 'PENDING');
       final total = await client
           .from('provider_profiles')
-          .select('id', const FetchOptions(count: CountOption.exact));
+          .select('id', count: CountOption.exact);
       final users = await client
           .from('profiles')
-          .select('id', const FetchOptions(count: CountOption.exact));
+          .select('id', count: CountOption.exact);
       final prods = await client
           .from('products')
-          .select('id', const FetchOptions(count: CountOption.exact));
+          .select('id', count: CountOption.exact);
       if (mounted) {
         setState(() {
           _pendingProviders = pending.count ?? 0;

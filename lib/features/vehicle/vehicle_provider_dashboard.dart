@@ -47,7 +47,7 @@ class _VehicleProviderDashboardState
       }
       final vehicles = await client
           .from('vehicles')
-          .select('id', const FetchOptions(count: CountOption.exact))
+          .select('id', count: CountOption.exact)
           .eq('provider_id', prov['id']);
       final status = await client
           .from('driver_status')

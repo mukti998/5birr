@@ -59,7 +59,7 @@ class AuthState {
 /// Auth state notifier managing Supabase auth + profile + roles.
 class AuthNotifier extends StateNotifier<AuthState> {
   final SupabaseService _svc;
-  StreamSubscription<AuthState?>? _authSub;
+  StreamSubscription<AuthState>? _authSub;
 
   AuthNotifier(this._svc) : super(const AuthState(isLoading: true)) {
     _init();

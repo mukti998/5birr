@@ -42,12 +42,12 @@ class _ServiceProviderDashboardState
       }
       final prods = await client
           .from('products')
-          .select('id', const FetchOptions(count: CountOption.exact))
+          .select('id', count: CountOption.exact)
           .eq('provider_id', prov['id'])
           .eq('is_active', true);
       final orders = await client
           .from('orders')
-          .select('id', const FetchOptions(count: CountOption.exact))
+          .select('id', count: CountOption.exact)
           .eq('provider_id', prov['id']);
       if (mounted) {
         setState(() {
