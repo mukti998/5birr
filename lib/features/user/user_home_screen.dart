@@ -48,7 +48,7 @@ class _UserHomeScreenState extends State<UserHomeScreen> {
               .toList();
           _products = (prodData as List).map((j) {
             final imgs = (j['product_images'] as List?)
-                    ?.map((i) => ProductImage.fromJson(i))
+                    ?              .map((i) => ListingImage.fromJson(i))
                     .toList() ??
                 [];
             return Product(

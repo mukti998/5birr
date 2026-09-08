@@ -65,9 +65,10 @@ class CategoryRepository {
   Future<int> countProducts(String categoryId) async {
     final data = await _svc.client
         .from('products')
-        .select('id', count: CountOption.exact)
+        .select('id')
         .eq('category_id', categoryId)
-        .eq('is_active', true);
+        .eq('is_active', true)
+        .count(CountOption.exact);
     return data.count ?? 0;
   }
 }

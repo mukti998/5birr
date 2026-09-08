@@ -86,17 +86,21 @@ class AdminRepository {
   Future<Map<String, int>> getDashboardStats() async {
     final providers = await _svc.client
         .from('provider_profiles')
-        .select('id', count: CountOption.exact);
+        .select('id')
+        .count(CountOption.exact);
     final users = await _svc.client
         .from('profiles')
-        .select('id', count: CountOption.exact);
+        .select('id')
+        .count(CountOption.exact);
     final orders = await _svc.client
         .from('orders')
-        .select('id', count: CountOption.exact);
+        .select('id')
+        .count(CountOption.exact);
     final pending = await _svc.client
         .from('approval_requests')
-        .select('id', count: CountOption.exact)
-        .eq('status', 'PENDING_APPROVAL');
+        .select('id')
+        .eq('status', 'PENDING_APPROVAL')
+        .count(CountOption.exact);
 
     return {
       'providers': providers.count ?? 0,

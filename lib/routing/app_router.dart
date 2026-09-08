@@ -15,6 +15,7 @@ import '../features/user/user_favorites_screen.dart';
 import '../features/user/user_cart_screen.dart';
 import '../features/user/user_checkout_screen.dart';
 import '../features/user/user_order_detail_screen.dart';
+import '../features/user/user_search_screen.dart';
 import '../features/user/review_form_screen.dart';
 import '../features/provider/service_provider_dashboard.dart';
 import '../features/provider/provider_orders_screen.dart';
@@ -141,7 +142,7 @@ final appRouterProvider = Provider<GoRouter>((ref) {
       GoRoute(path: '/vehicle/vehicles/new', builder: (_, __) => const VehicleFormScreen()),
       GoRoute(path: '/vehicle/vehicles/:id', builder: (_, s) => VehicleFormScreen(vehicleId: s.pathParameters['id'])),
       GoRoute(path: '/vehicle/ride-requests', builder: (_, __) => const DriverRideRequestsScreen()),
-      GoRoute(path: '/vehicle/trip/:id', builder: (_, s) => DriverTripScreen(rideId: s.pathParameters['id']!)),
+      GoRoute(path: '/vehicle/trip/:id', builder: (_, __) => const DriverTripScreen()),
       GoRoute(path: '/vehicle/history', builder: (_, __) => const RideHistoryScreen(isProvider: true)),
 
       // ── Admin ──

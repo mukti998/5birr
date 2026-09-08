@@ -1,3 +1,4 @@
+import 'dart:io';
 import 'package:supabase_flutter/supabase_flutter.dart';
 
 class WalletService {
@@ -38,10 +39,9 @@ class WalletService {
     var q = _client
         .from('wallet_transactions')
         .select()
-        .eq('provider_id', providerId)
-        .order('created_at', ascending: false);
+        .eq('provider_id', providerId);
     if (type != null) q = q.eq('transaction_type', type);
-    final data = await q.range(offset, offset + limit - 1);
+    final data = await q.order('created_at', ascending: false).range(offset, offset + limit - 1);
     return List<Map<String, dynamic>>.from(data as List);
   }
 
@@ -107,7 +107,7 @@ class WalletService {
     final fileName =
         '${providerId}_${DateTime.now().millisecondsSinceEpoch}.jpg';
     final path = 'payment-screenshots/$providerId/$fileName';
-    await _client.storage.from('payment-screenshots').upload(path, filePath,
+    await _client.storage.from('payment-screenshots').upload(path, File(filePath),
         fileOptions: const FileOptions(upsert: true));
     return path;
   }
