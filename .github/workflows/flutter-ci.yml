@@ -32,6 +32,14 @@ jobs:
             git push
           fi
 
+      - name: Inject Supabase env vars
+        run: |
+          cat > .env <<EOF
+          SUPABASE_URL=${{ secrets.SUPABASE_URL }}
+          SUPABASE_ANON_KEY=${{ secrets.SUPABASE_ANON_KEY }}
+          SUPABASE_SERVICE_ROLE_KEY=${{ secrets.SUPABASE_SERVICE_ROLE_KEY }}
+          EOF
+
       - name: Install dependencies
         run: flutter pub get
 
