@@ -1,4 +1,4 @@
-# 5BIRR Flutter CI Pipeline
+# 5BIRR Flutter CI Pipeline — debug + release builds
 name: Flutter CI
 
 on:
