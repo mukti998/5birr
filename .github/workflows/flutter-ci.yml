@@ -70,6 +70,19 @@ jobs:
           path: build/app/outputs/flutter-apk/app-debug.apk
           if-no-files-found: error
 
+      # === Debug: check which secrets are set ===
+      - name: Debug secret availability
+        env:
+          KB64: ${{ secrets.KEYSTORE_BASE64 }}
+          KPW: ${{ secrets.KEYSTORE_PASSWORD }}
+          KPW2: ${{ secrets.KEY_PASSWORD }}
+          SU: ${{ secrets.SUPABASE_URL }}
+        run: |
+          echo "KEYSTORE_BASE64 length: ${#KB64}"
+          echo "KEYSTORE_PASSWORD length: ${#KPW}"
+          echo "KEY_PASSWORD length: ${#KPW2}"
+          echo "SUPABASE_URL length: ${#SU}"
+
       # === Release Bundle Build ===
       - name: Decode release keystore
         env:
