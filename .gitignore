@@ -11,3 +11,4 @@ build/
 supabase/.branches
 supabase/.temp
 node_modules/
+*.p12
