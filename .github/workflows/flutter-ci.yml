@@ -72,23 +72,26 @@ jobs:
 
       # === Release Bundle Build ===
       - name: Decode release keystore
-        if: ${{ secrets.KEYSTORE_BASE64 != '' }}
         env:
           KEYSTORE_BASE64: ${{ secrets.KEYSTORE_BASE64 }}
         run: |
-          echo "$KEYSTORE_BASE64" | base64 -d > android/app/release-keystore.p12
+          if [ -n "$KEYSTORE_BASE64" ]; then
+            echo "$KEYSTORE_BASE64" | base64 -d > android/app/release-keystore.p12
+            echo "KEYSTORE_DECODED=true" >> "$GITHUB_ENV"
+          else
+            echo "No keystore secret found — skipping release build."
+          fi
 
       - name: Build release app bundle
-        if: ${{ secrets.KEYSTORE_BASE64 != '' }}
+        if: env.KEYSTORE_DECODED == 'true'
         env:
-          KEYSTORE_BASE64: ${{ secrets.KEYSTORE_BASE64 }}
           KEYSTORE_PASSWORD: ${{ secrets.KEYSTORE_PASSWORD }}
           KEY_ALIAS: fivebirr
           KEY_PASSWORD: ${{ secrets.KEY_PASSWORD }}
         run: flutter build appbundle --release
 
       - name: Upload release AAB artifact
-        if: ${{ secrets.KEYSTORE_BASE64 != '' }}
+        if: env.KEYSTORE_DECODED == 'true'
         uses: actions/upload-artifact@v4
         with:
           name: release-aab
