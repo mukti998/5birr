@@ -73,30 +73,23 @@ jobs:
       # === Debug: check which secrets are set ===
       - name: Debug secret availability
         env:
-          KB64: ${{ secrets.KEYSTORE_BASE64 }}
           KPW: ${{ secrets.KEYSTORE_PASSWORD }}
           KPW2: ${{ secrets.KEY_PASSWORD }}
           SU: ${{ secrets.SUPABASE_URL }}
         run: |
-          echo "KEYSTORE_BASE64 length: ${#KB64}"
           echo "KEYSTORE_PASSWORD length: ${#KPW}"
           echo "KEY_PASSWORD length: ${#KPW2}"
           echo "SUPABASE_URL length: ${#SU}"
-
-      # === Release Bundle Build ===
-      - name: Decode release keystore
-        env:
-          KEYSTORE_BASE64: ${{ secrets.KEYSTORE_BASE64 }}
-        run: |
-          if [ -n "$KEYSTORE_BASE64" ]; then
-            echo "$KEYSTORE_BASE64" | base64 -d > android/app/release-keystore.p12
-            echo "KEYSTORE_DECODED=true" >> "$GITHUB_ENV"
-          else
-            echo "No keystore secret found — skipping release build."
+          echo "Keystore file exists: $(test -f android/app/release-keystore.p12 && echo yes || echo no)"
+          if [ -n "$KPW" ] && [ -f android/app/release-keystore.p12 ]; then
+            echo "RELEASE_READY=true" >> "$GITHUB_ENV"
           fi
 
+      # === Release Bundle Build ===
+      # Keystore file is committed to the repo (password-protected).
+      # Only the passwords are GitHub secrets — no base64 encoding needed.
       - name: Build release app bundle
-        if: env.KEYSTORE_DECODED == 'true'
+        if: env.RELEASE_READY == 'true'
         env:
           KEYSTORE_PASSWORD: ${{ secrets.KEYSTORE_PASSWORD }}
           KEY_ALIAS: fivebirr
@@ -104,7 +97,7 @@ jobs:
         run: flutter build appbundle --release
 
       - name: Upload release AAB artifact
-        if: env.KEYSTORE_DECODED == 'true'
+        if: env.RELEASE_READY == 'true'
         uses: actions/upload-artifact@v4
         with:
           name: release-aab
