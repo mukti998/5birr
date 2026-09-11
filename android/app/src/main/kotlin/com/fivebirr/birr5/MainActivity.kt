@@ -1,4 +1,4 @@
-package com.fivebirr.birr5
+package com.amistbirr.myapp
 
 import io.flutter.embedding.android.FlutterActivity
 
