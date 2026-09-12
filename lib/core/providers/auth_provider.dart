@@ -91,23 +91,35 @@ class AuthNotifier extends StateNotifier<AuthState> {
 
   Future<void> _loadUserProfile(User user) async {
     try {
-      // Load profile
+      // Load profile — timeout so a hanging query can never leave the UI stuck
       final profileData = await _svc.client
           .from('profiles')
           .select()
           .eq('id', user.id)
-          .maybeSingle();
+          .maybeSingle()
+          .timeout(
+        const Duration(seconds: 10),
+        onTimeout: () => throw TimeoutException(
+          'profiles query timed out after 10 seconds',
+        ),
+      );
 
       UserProfile? profile;
       if (profileData != null) {
         profile = UserProfile.fromJson(profileData);
       }
 
-      // Load roles
+      // Load roles — also timeout-protected
       final rolesData = await _svc.client
           .from('user_roles')
           .select('role')
-          .eq('user_id', user.id);
+          .eq('user_id', user.id)
+          .timeout(
+        const Duration(seconds: 10),
+        onTimeout: () => throw TimeoutException(
+          'user_roles query timed out after 10 seconds',
+        ),
+      );
 
       final roles = (rolesData as List)
           .map((r) => _parseRole(r['role'] as String))
