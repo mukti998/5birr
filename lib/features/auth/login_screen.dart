@@ -84,13 +84,13 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
             padding: const EdgeInsets.symmetric(horizontal: 24),
             child: Column(
               children: [
-                const SizedBox(height: 48),
+                const SizedBox(height: 56),
                 // Logo
                 AdminGate(
                   onUnlocked: () => context.go('/admin-login'),
                   child: Container(
-                    width: 80,
-                    height: 80,
+                    width: 84,
+                    height: 84,
                     decoration: BoxDecoration(
                       color: Colors.white.withOpacity(0.15),
                       shape: BoxShape.circle,
@@ -100,20 +100,26 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
                     child: const Center(
                       child: Text('₅',
                           style: TextStyle(
-                              fontSize: 40,
+                              fontSize: 42,
                               fontWeight: FontWeight.w700,
                               color: Colors.white)),
                     ),
                   ),
                 ),
-                const SizedBox(height: 12),
+                const SizedBox(height: 14),
                 const Text('5BIRR',
                     style: TextStyle(
                         fontSize: 28,
                         fontWeight: FontWeight.w700,
                         color: Colors.white,
                         letterSpacing: 3)),
-                const SizedBox(height: 32),
+                const SizedBox(height: 6),
+                Text('Marketplace • Services • Transport',
+                    style: TextStyle(
+                        fontSize: 13,
+                        color: Colors.white.withOpacity(0.7),
+                        letterSpacing: 0.5)),
+                const SizedBox(height: 36),
                 // Login card
                 Container(
                   width: double.infinity,
@@ -135,14 +141,10 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
                         const Text('Welcome Back',
-                            style: TextStyle(
-                                fontSize: 22,
-                                fontWeight: FontWeight.w700,
-                                color: AppTheme.textPrimary)),
+                            style: AppTheme.headingLarge),
                         const SizedBox(height: 4),
                         const Text('Sign in to your account',
-                            style: TextStyle(
-                                fontSize: 14, color: AppTheme.textSecondary)),
+                            style: AppTheme.caption),
                         const SizedBox(height: 24),
                         BirrTextField(
                           label: 'Phone Number',

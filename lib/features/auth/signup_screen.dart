@@ -249,69 +249,149 @@ class _SignupScreenState extends ConsumerState<SignupScreen> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      appBar: AppBar(
-        title: Text('$_roleName Registration'),
-        leading: IconButton(
-          icon: const Icon(Icons.arrow_back_ios_new, size: 20),
-          onPressed: () => context.go('/role-select'),
-        ),
-      ),
       body: Stack(
         children: [
-          SingleChildScrollView(
-            padding: const EdgeInsets.all(20),
-            child: Form(
-              key: _formKey,
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  _buildHeader(),
-                  const SizedBox(height: 24),
-                  if (_isProvider) ...[
-                    _buildDocumentSection(),
-                    const SizedBox(height: 20),
-                  ],
-                  _buildFormFields(),
-                  const SizedBox(height: 12),
-                  if (_uploadError != null)
-                    Container(
-                      width: double.infinity,
-                      padding: const EdgeInsets.all(12),
-                      decoration: BoxDecoration(
-                        color: AppTheme.error.withOpacity(0.08),
-                        borderRadius: BorderRadius.circular(8),
+          Column(
+            children: [
+              // Gradient header
+              Container(
+                width: double.infinity,
+                padding: const EdgeInsets.fromLTRB(16, 48, 16, 24),
+                decoration: const BoxDecoration(
+                  gradient: LinearGradient(
+                    begin: Alignment.topCenter,
+                    end: Alignment.bottomCenter,
+                    colors: [AppTheme.primaryGreenDark, AppTheme.primaryGreen],
+                    stops: [0.0, 1.0],
+                  ),
+                ),
+                child: SafeArea(
+                  bottom: false,
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      // Back button
+                      GestureDetector(
+                        onTap: () => context.go('/role-select'),
+                        child: Container(
+                          padding: const EdgeInsets.all(8),
+                          decoration: BoxDecoration(
+                            color: Colors.white.withOpacity(0.15),
+                            borderRadius: BorderRadius.circular(10),
+                          ),
+                          child: const Icon(
+                            Icons.arrow_back_ios_new,
+                            size: 18,
+                            color: Colors.white,
+                          ),
+                        ),
                       ),
-                      child: Text(_uploadError!,
-                          style: const TextStyle(
-                              fontSize: 13, color: AppTheme.error)),
-                    ),
-                  if (_error != null) ...[
-                    const SizedBox(height: 12),
-                    Container(
-                      width: double.infinity,
-                      padding: const EdgeInsets.all(12),
-                      decoration: BoxDecoration(
-                        color: AppTheme.error.withOpacity(0.08),
-                        borderRadius: BorderRadius.circular(8),
+                      const SizedBox(height: 20),
+                      Text(
+                        '$_roleName Registration',
+                        style: const TextStyle(
+                          fontSize: 24,
+                          fontWeight: FontWeight.w700,
+                          color: Colors.white,
+                          height: 1.2,
+                        ),
                       ),
-                      child: Text(_error!,
-                          style: const TextStyle(
-                              fontSize: 13, color: AppTheme.error)),
-                    ),
-                  ],
-                  const SizedBox(height: 24),
-                  SizedBox(
-                    width: double.infinity,
-                    child: PrimaryButton(
-                      label: _isProvider ? 'SUBMIT APPLICATION' : 'CREATE ACCOUNT',
-                      isLoading: _isLoading,
-                      onPressed: _handleSignup,
+                      const SizedBox(height: 6),
+                      Text(
+                        _isProvider
+                            ? 'Your application will be reviewed before activation'
+                            : 'Create your account to get started',
+                        style: TextStyle(
+                          fontSize: 14,
+                          color: Colors.white.withOpacity(0.8),
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+              ),
+              // Form content
+              Expanded(
+                child: SingleChildScrollView(
+                  padding: const EdgeInsets.all(20),
+                  child: Form(
+                    key: _formKey,
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        if (_isProvider) ...[
+                          _buildDocumentSection(),
+                          const SizedBox(height: 24),
+                        ],
+                        _buildFormFields(),
+                        const SizedBox(height: 12),
+                        if (_uploadError != null)
+                          Container(
+                            width: double.infinity,
+                            padding: const EdgeInsets.all(12),
+                            decoration: BoxDecoration(
+                              color: AppTheme.error.withOpacity(0.08),
+                              borderRadius: BorderRadius.circular(8),
+                              border: Border.all(
+                                  color: AppTheme.error.withOpacity(0.2)),
+                            ),
+                            child: Text(_uploadError!,
+                                style: const TextStyle(
+                                    fontSize: 13, color: AppTheme.error)),
+                          ),
+                        if (_error != null) ...[
+                          const SizedBox(height: 12),
+                          Container(
+                            width: double.infinity,
+                            padding: const EdgeInsets.all(12),
+                            decoration: BoxDecoration(
+                              color: AppTheme.error.withOpacity(0.08),
+                              borderRadius: BorderRadius.circular(8),
+                              border: Border.all(
+                                  color: AppTheme.error.withOpacity(0.2)),
+                            ),
+                            child: Text(_error!,
+                                style: const TextStyle(
+                                    fontSize: 13, color: AppTheme.error)),
+                          ),
+                        ],
+                        const SizedBox(height: 24),
+                        SizedBox(
+                          width: double.infinity,
+                          child: PrimaryButton(
+                            label: _isProvider
+                                ? 'SUBMIT APPLICATION'
+                                : 'CREATE ACCOUNT',
+                            isLoading: _isLoading,
+                            onPressed: _handleSignup,
+                          ),
+                        ),
+                        const SizedBox(height: 16),
+                        // Sign in link
+                        Row(
+                          mainAxisAlignment: MainAxisAlignment.center,
+                          children: [
+                            const Text('Already have an account? ',
+                                style: TextStyle(
+                                    fontSize: 14,
+                                    color: AppTheme.textSecondary)),
+                            GestureDetector(
+                              onTap: () => context.go('/login'),
+                              child: const Text('Sign In',
+                                  style: TextStyle(
+                                      fontSize: 14,
+                                      fontWeight: FontWeight.w600,
+                                      color: AppTheme.teal)),
+                            ),
+                          ],
+                        ),
+                        const SizedBox(height: 24),
+                      ],
                     ),
                   ),
-                  const SizedBox(height: 24),
-                ],
+                ),
               ),
-            ),
+            ],
           ),
           if (_isLoading || _uploadingDocs)
             Container(
@@ -322,6 +402,13 @@ class _SignupScreenState extends ConsumerState<SignupScreen> {
                   decoration: BoxDecoration(
                     color: AppTheme.surface,
                     borderRadius: BorderRadius.circular(16),
+                    boxShadow: [
+                      BoxShadow(
+                        color: Colors.black.withOpacity(0.1),
+                        blurRadius: 20,
+                        offset: const Offset(0, 4),
+                      ),
+                    ],
                   ),
                   child: Column(
                     mainAxisSize: MainAxisSize.min,
@@ -346,61 +433,37 @@ class _SignupScreenState extends ConsumerState<SignupScreen> {
     );
   }
 
-  Widget _buildHeader() {
-    return Container(
-      width: double.infinity,
-      padding: const EdgeInsets.all(16),
-      decoration: BoxDecoration(
-        color: AppTheme.primaryGreen.withOpacity(0.06),
-        borderRadius: BorderRadius.circular(12),
-        border: Border.all(color: AppTheme.primaryGreen.withOpacity(0.12)),
-      ),
-      child: Row(
-        children: [
-          Icon(
-            _isProvider ? Icons.storefront : Icons.person_add_outlined,
-            color: AppTheme.primaryGreen,
-            size: 24,
-          ),
-          const SizedBox(width: 12),
-          Expanded(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Text('Register as $_roleName',
-                    style: const TextStyle(
-                        fontSize: 15,
-                        fontWeight: FontWeight.w600,
-                        color: AppTheme.textPrimary)),
-                const SizedBox(height: 2),
-                Text(
-                  _isProvider
-                      ? 'Your application will be reviewed by our team before activation.'
-                      : 'Create your account to start using 5BIRR.',
-                  style: const TextStyle(
-                      fontSize: 12, color: AppTheme.textSecondary),
-                ),
-              ],
-            ),
-          ),
-        ],
-      ),
-    );
-  }
-
   Widget _buildDocumentSection() {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        const Text('Required Documents',
-            style: TextStyle(
-                fontSize: 15,
-                fontWeight: FontWeight.w600,
-                color: AppTheme.textPrimary)),
-        const SizedBox(height: 4),
-        const Text('Upload clear photos of your documents',
-            style: TextStyle(fontSize: 12, color: AppTheme.textMuted)),
-        const SizedBox(height: 12),
+        Row(
+          children: [
+            Container(
+              padding: const EdgeInsets.all(8),
+              decoration: BoxDecoration(
+                color: AppTheme.primaryGreen.withOpacity(0.1),
+                borderRadius: BorderRadius.circular(8),
+              ),
+              child: const Icon(Icons.description_outlined,
+                  color: AppTheme.primaryGreen, size: 20),
+            ),
+            const SizedBox(width: 12),
+            const Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text('Required Documents',
+                      style: AppTheme.sectionHeader),
+                  SizedBox(height: 2),
+                  Text('Upload clear photos of your documents',
+                      style: AppTheme.caption),
+                ],
+              ),
+            ),
+          ],
+        ),
+        const SizedBox(height: 16),
         DocumentUploadCard(
           title: 'National ID',
           subtitle: 'Clear photo of front side',
@@ -426,7 +489,16 @@ class _SignupScreenState extends ConsumerState<SignupScreen> {
 
   Widget _buildFormFields() {
     return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
       children: [
+        const Text('Personal Information',
+            style: AppTheme.sectionHeader),
+        const SizedBox(height: 4),
+        const Text(
+          'Fill in your details to create your account',
+          style: AppTheme.caption,
+        ),
+        const SizedBox(height: 16),
         BirrTextField(
           label: _isProvider ? 'Business / Owner Name' : 'Full Name',
           controller: _nameController,
@@ -437,38 +509,20 @@ class _SignupScreenState extends ConsumerState<SignupScreen> {
             return null;
           },
         ),
-        if (_isProvider) ...[
-          const SizedBox(height: 16),
-          BirrTextField(
-            label: 'Phone Number',
-            hint: '+251 9XX XXX XXX',
-            controller: _phoneController,
-            keyboardType: TextInputType.phone,
-            textInputAction: TextInputAction.next,
-            validator: (v) {
-              if (v == null || v.trim().isEmpty) {
-                return 'Phone number is required';
-              }
-              return null;
-            },
-          ),
-        ],
-        if (!_isProvider) ...[
-          const SizedBox(height: 16),
-          BirrTextField(
-            label: 'Phone Number',
-            hint: '+251 9XX XXX XXX',
-            controller: _phoneController,
-            keyboardType: TextInputType.phone,
-            textInputAction: TextInputAction.next,
-            validator: (v) {
-              if (v == null || v.trim().isEmpty) {
-                return 'Phone number is required';
-              }
-              return null;
-            },
-          ),
-        ],
+        const SizedBox(height: 16),
+        BirrTextField(
+          label: 'Phone Number',
+          hint: '+251 9XX XXX XXX',
+          controller: _phoneController,
+          keyboardType: TextInputType.phone,
+          textInputAction: TextInputAction.next,
+          validator: (v) {
+            if (v == null || v.trim().isEmpty) {
+              return 'Phone number is required';
+            }
+            return null;
+          },
+        ),
         const SizedBox(height: 16),
         BirrTextField(
           label: 'National ID Number',

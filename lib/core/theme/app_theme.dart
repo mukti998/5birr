@@ -34,6 +34,35 @@ class AppTheme {
   static const Color background = cream;
   static const Color cardBorder = Color(0xFFE0D8C8);
 
+  // ── Reusable Text Styles ──────────────────────────────────────
+  static const TextStyle headingLarge = TextStyle(
+    fontSize: 24,
+    fontWeight: FontWeight.w700,
+    color: textPrimary,
+    height: 1.3,
+  );
+
+  static const TextStyle sectionHeader = TextStyle(
+    fontSize: 16,
+    fontWeight: FontWeight.w700,
+    color: textPrimary,
+    letterSpacing: 0.2,
+  );
+
+  static const TextStyle bodyLarge = TextStyle(
+    fontSize: 15,
+    fontWeight: FontWeight.w400,
+    color: textPrimary,
+    height: 1.5,
+  );
+
+  static const TextStyle caption = TextStyle(
+    fontSize: 12,
+    fontWeight: FontWeight.w400,
+    color: textMuted,
+    height: 1.4,
+  );
+
   // ── Light Theme ───────────────────────────────────────────────
   static ThemeData get lightTheme {
     return ThemeData(

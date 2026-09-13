@@ -9,51 +9,57 @@ class RoleSelectionScreen extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      appBar: AppBar(title: const Text('Create Account')),
       body: Container(
         width: double.infinity,
         decoration: const BoxDecoration(
           gradient: LinearGradient(
             begin: Alignment.topCenter,
             end: Alignment.bottomCenter,
-            colors: [AppTheme.primaryGreen, AppTheme.cream],
-            stops: [0.0, 0.3],
+            colors: [AppTheme.primaryGreenDark, AppTheme.primaryGreen],
+            stops: [0.0, 0.4],
           ),
         ),
         child: SafeArea(
           child: SingleChildScrollView(
-            padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 20),
+            padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 12),
             child: Column(
               children: [
-                const SizedBox(height: 12),
+                const SizedBox(height: 20),
+                // Logo mark
                 Container(
-                  width: 64,
-                  height: 64,
+                  width: 72,
+                  height: 72,
                   decoration: BoxDecoration(
-                    color: Colors.white.withOpacity(0.2),
+                    color: Colors.white.withOpacity(0.15),
                     shape: BoxShape.circle,
+                    border: Border.all(
+                        color: Colors.white.withOpacity(0.3), width: 2),
                   ),
                   child: const Center(
                     child: Text('₅',
                         style: TextStyle(
-                            fontSize: 32,
+                            fontSize: 36,
                             fontWeight: FontWeight.w700,
                             color: Colors.white)),
                   ),
                 ),
-                const SizedBox(height: 16),
+                const SizedBox(height: 20),
                 const Text('Choose Your Role',
                     style: TextStyle(
-                        fontSize: 22,
+                        fontSize: 24,
                         fontWeight: FontWeight.w700,
-                        color: Colors.white)),
-                const SizedBox(height: 6),
+                        color: Colors.white,
+                        height: 1.2)),
+                const SizedBox(height: 8),
                 Text(
                   'Select how you want to use 5BIRR',
                   style: TextStyle(
-                      fontSize: 14, color: Colors.white.withOpacity(0.8)),
+                      fontSize: 14,
+                      color: Colors.white.withOpacity(0.8),
+                      letterSpacing: 0.3),
                 ),
-                const SizedBox(height: 28),
+                const SizedBox(height: 32),
+                // Role cards
                 RoleCard(
                   icon: Icons.person_outline,
                   title: 'User',
@@ -61,7 +67,7 @@ class RoleSelectionScreen extends StatelessWidget {
                       'Browse products, services, and book rides in your area',
                   onTap: () => context.go('/signup/user'),
                 ),
-                const SizedBox(height: 12),
+                const SizedBox(height: 14),
                 RoleCard(
                   icon: Icons.local_shipping_outlined,
                   title: 'Vehicle Provider',
@@ -69,7 +75,7 @@ class RoleSelectionScreen extends StatelessWidget {
                       'Offer ride, delivery, and transportation services',
                   onTap: () => context.go('/signup/vehicle'),
                 ),
-                const SizedBox(height: 12),
+                const SizedBox(height: 14),
                 RoleCard(
                   icon: Icons.storefront_outlined,
                   title: 'Service Provider',
@@ -78,6 +84,34 @@ class RoleSelectionScreen extends StatelessWidget {
                   onTap: () => context.go('/signup/service'),
                 ),
                 const SizedBox(height: 32),
+                // Divider
+                Row(
+                  children: [
+                    Expanded(
+                      child: Container(
+                        height: 1,
+                        color: Colors.white.withOpacity(0.2),
+                      ),
+                    ),
+                    Padding(
+                      padding: const EdgeInsets.symmetric(horizontal: 16),
+                      child: Text('OR',
+                          style: TextStyle(
+                              fontSize: 11,
+                              fontWeight: FontWeight.w600,
+                              color: Colors.white.withOpacity(0.5),
+                              letterSpacing: 1.5)),
+                    ),
+                    Expanded(
+                      child: Container(
+                        height: 1,
+                        color: Colors.white.withOpacity(0.2),
+                      ),
+                    ),
+                  ],
+                ),
+                const SizedBox(height: 24),
+                // Sign in link
                 Row(
                   mainAxisAlignment: MainAxisAlignment.center,
                   children: [
