@@ -50,7 +50,7 @@ class _AuthRefreshNotifier extends ChangeNotifier {
     _sub = ref.listen<AuthState>(authProvider, (_, __) => notifyListeners());
   }
 
-  late final StreamSubscription<dynamic> _sub;
+  late final ProviderSubscription<AuthState> _sub;
 
   @override
   void dispose() {
