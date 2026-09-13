@@ -44,6 +44,9 @@ import '../features/shared/ride_history_screen.dart';
 final appRouterProvider = Provider<GoRouter>((ref) {
   final authState = ref.watch(authProvider);
 
+  // ── DIAGNOSTIC failsafe: force past splash after 15s ──
+  final _bootStopwatch = Stopwatch()..start();
+
   return GoRouter(
     initialLocation: '/',
     redirect: (context, state) {
@@ -54,6 +57,13 @@ final appRouterProvider = Provider<GoRouter>((ref) {
           loc == '/role-select' ||
           loc == '/admin-login' ||
           loc == '/';
+
+      // DIAGNOSTIC failsafe: if still loading after 15 s, force to login
+      // so users are never stuck on the splash screen. Remove this block
+      // once the root cause is identified and fixed.
+      if (isLoading && _bootStopwatch.elapsed.inSeconds >= 15) {
+        return '/login';
+      }
 
       if (isLoading) return null;
 
