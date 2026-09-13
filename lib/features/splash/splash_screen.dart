@@ -1,23 +1,17 @@
-import 'dart:async';
-
 import 'package:flutter/material.dart';
-import 'package:flutter_riverpod/flutter_riverpod.dart';
-import '../../core/providers/auth_provider.dart';
 import '../../core/theme/app_theme.dart';
 
-class SplashScreen extends ConsumerStatefulWidget {
+class SplashScreen extends StatefulWidget {
   const SplashScreen({super.key});
 
   @override
-  ConsumerState<SplashScreen> createState() => _SplashScreenState();
+  State<SplashScreen> createState() => _SplashScreenState();
 }
 
-class _SplashScreenState extends ConsumerState<SplashScreen>
+class _SplashScreenState extends State<SplashScreen>
     with SingleTickerProviderStateMixin {
   late AnimationController _controller;
   late Animation<double> _fadeAnim;
-  int _elapsedSeconds = 0;
-  Timer? _tickTimer;
 
   @override
   void initState() {
@@ -30,23 +24,16 @@ class _SplashScreenState extends ConsumerState<SplashScreen>
       CurvedAnimation(parent: _controller, curve: Curves.easeIn),
     );
     _controller.forward();
-    _tickTimer = Timer.periodic(const Duration(seconds: 1), (_) {
-      if (mounted) setState(() => _elapsedSeconds++);
-    });
   }
 
   @override
   void dispose() {
-    _tickTimer?.cancel();
     _controller.dispose();
     super.dispose();
   }
 
   @override
   Widget build(BuildContext context) {
-    // Watch auth state so diagnostic values are live.
-    final auth = ref.watch(authProvider);
-
     return Scaffold(
       body: Container(
         width: double.infinity,
@@ -107,39 +94,6 @@ class _SplashScreenState extends ConsumerState<SplashScreen>
                 strokeWidth: 2,
                 valueColor: AlwaysStoppedAnimation<Color>(Colors.white70),
               ),
-
-              // ── DIAGNOSTIC (temporary — remove after root cause is fixed) ──
-              const SizedBox(height: 32),
-              Container(
-                padding: const EdgeInsets.all(12),
-                margin: const EdgeInsets.symmetric(horizontal: 32),
-                decoration: BoxDecoration(
-                  color: Colors.black.withOpacity(0.35),
-                  borderRadius: BorderRadius.circular(8),
-                ),
-                child: DefaultTextStyle(
-                  style: const TextStyle(
-                    fontSize: 11,
-                    fontFamily: 'monospace',
-                    color: Colors.white70,
-                  ),
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      const Text('[DIAGNOSTICS — temporary]',
-                          style: TextStyle(
-                              fontWeight: FontWeight.bold,
-                              color: Colors.yellowAccent)),
-                      const SizedBox(height: 4),
-                      Text('isLoading: ${auth.isLoading}'),
-                      Text('isAuthenticated: ${auth.isAuthenticated}'),
-                      Text('error: ${auth.error ?? "none"}'),
-                      Text('elapsed: ${_elapsedSeconds}s'),
-                    ],
-                  ),
-                ),
-              ),
-              // ── END DIAGNOSTIC ──
             ],
           ),
         ),

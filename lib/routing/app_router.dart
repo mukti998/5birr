@@ -55,8 +55,7 @@ final appRouterProvider = Provider<GoRouter>((ref) {
       final loc = state.matchedLocation;
       final isAuthRoute = loc == '/login' ||
           loc == '/role-select' ||
-          loc == '/admin-login' ||
-          loc == '/';
+          loc == '/admin-login';
 
       // DIAGNOSTIC failsafe: if still loading after 15 s, force to login
       // so users are never stuck on the splash screen. Remove this block
