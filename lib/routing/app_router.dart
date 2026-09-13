@@ -1,3 +1,5 @@
+import 'dart:async';
+
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
@@ -41,14 +43,39 @@ import '../features/user/user_ride_request_screen.dart';
 import '../features/user/user_active_ride_screen.dart';
 import '../features/shared/ride_history_screen.dart';
 
+/// A [ChangeNotifier] that fires whenever [authProvider] state changes,
+/// allowing [GoRouter] to re-evaluate its redirect callback.
+class _AuthRefreshNotifier extends ChangeNotifier {
+  _AuthRefreshNotifier(Ref ref) {
+    _sub = ref.listen<AuthState>(authProvider, (_, __) => notifyListeners());
+  }
+
+  late final StreamSubscription<dynamic> _sub;
+
+  @override
+  void dispose() {
+    _sub.close();
+    super.dispose();
+  }
+}
+
 final appRouterProvider = Provider<GoRouter>((ref) {
+  // Watch auth state — this creates a dependency so the provider is
+  // re-evaluated when auth changes.
   final authState = ref.watch(authProvider);
 
-  // ── DIAGNOSTIC failsafe: force past splash after 15s ──
-  final _bootStopwatch = Stopwatch()..start();
+  // Create a ChangeNotifier that fires on every auth state change.
+  // GoRouter listens to this via refreshListenable and re-evaluates
+  // the redirect callback each time it fires.
+  final refreshNotifier = _AuthRefreshNotifier(ref);
+  ref.onDispose(refreshNotifier.dispose);
+
+  // ── DIAGNOSTIC failsafe: force past splash after 15 s ──
+  final bootStopwatch = Stopwatch()..start();
 
   return GoRouter(
     initialLocation: '/',
+    refreshListenable: refreshNotifier,
     redirect: (context, state) {
       final isLoading = authState.isLoading;
       final isAuthenticated = authState.isAuthenticated;
@@ -60,7 +87,7 @@ final appRouterProvider = Provider<GoRouter>((ref) {
       // DIAGNOSTIC failsafe: if still loading after 15 s, force to login
       // so users are never stuck on the splash screen. Remove this block
       // once the root cause is identified and fixed.
-      if (isLoading && _bootStopwatch.elapsed.inSeconds >= 15) {
+      if (isLoading && bootStopwatch.elapsed.inSeconds >= 15) {
         return '/login';
       }
 
