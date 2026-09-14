@@ -6,8 +6,28 @@ import 'core/config/env.dart';
 import 'core/services/supabase_service.dart';
 import 'app.dart';
 
+/// Global error state — set by FlutterError.onError and
+/// PlatformDispatcher.instance.onError, read by the
+/// ValueListenableBuilder wrapper in [main].
+final ValueNotifier<String?> globalCrashError = ValueNotifier<String?>(null);
+String? globalCrashStack;
+
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
+
+  // ── Global error capture (diagnostic scaffolding) ──────────────
+  FlutterError.onError = (details) {
+    FlutterError.presentError(details);
+    globalCrashError.value = details.exceptionAsString();
+    globalCrashStack = details.stack.toString();
+  };
+
+  PlatformDispatcher.instance.onError = (error, stack) {
+    globalCrashError.value = error.toString();
+    globalCrashStack = stack.toString();
+    return true;
+  };
+  // ── End global error capture ───────────────────────────────────
 
   Object? startupError;
   StackTrace? startupStack;
@@ -26,8 +46,65 @@ void main() async {
 
   runApp(
     ProviderScope(
-      child: startupError != null
-          ? MaterialApp(
+      child: ValueListenableBuilder<String?>(
+        valueListenable: globalCrashError,
+        builder: (context, crashError, _) {
+          // ── Crash overlay ──
+          if (crashError != null) {
+            return MaterialApp(
+              debugShowCheckedModeBanner: false,
+              home: Scaffold(
+                body: SafeArea(
+                  child: Padding(
+                    padding: const EdgeInsets.all(16),
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        const Text(
+                          'App Error Detected',
+                          style: TextStyle(
+                            fontSize: 20,
+                            fontWeight: FontWeight.bold,
+                            color: Colors.red,
+                          ),
+                        ),
+                        const SizedBox(height: 12),
+                        Text(
+                          crashError,
+                          style: const TextStyle(fontSize: 14),
+                        ),
+                        const SizedBox(height: 16),
+                        const Text(
+                          'Stack trace:',
+                          style: TextStyle(
+                            fontSize: 12,
+                            fontWeight: FontWeight.bold,
+                          ),
+                        ),
+                        const SizedBox(height: 8),
+                        Expanded(
+                          child: SingleChildScrollView(
+                            child: Text(
+                              globalCrashStack ?? '(no stack trace)',
+                              style: const TextStyle(
+                                fontSize: 10,
+                                fontFamily: 'monospace',
+                                color: Colors.grey,
+                              ),
+                            ),
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                ),
+              ),
+            );
+          }
+
+          // ── Normal app ──
+          if (startupError != null) {
+            return MaterialApp(
               debugShowCheckedModeBanner: false,
               home: Scaffold(
                 body: SafeArea(
@@ -58,8 +135,12 @@ void main() async {
                   ),
                 ),
               ),
-            )
-          : const Birr5App(),
+            );
+          }
+
+          return const Birr5App();
+        },
+      ),
     ),
   );
 }
